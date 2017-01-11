@@ -8,80 +8,96 @@
 
 void error(const char *msg) { perror(msg); exit(0); }
 
-int main(int argc,char *argv[])
+int send_request(char *host, int portno, char *method, char *path, char *data, char **headers)
 {
-    int i;
-
-    /* first where are we going to send it? */
-    int portno = atoi(argv[2])>0?atoi(argv[2]):80;
-    char *host = strlen(argv[1])>0?argv[1]:"localhost";
-
     struct hostent *server;
     struct sockaddr_in serv_addr;
     int sockfd, bytes, sent, received, total, message_size;
+    char *header;
     char *message, response[4096];
+    int i = 0;
 
-    if (argc < 5) { puts("Parameters: <host> <port> <method> <path> [<data> [<headers>]]"); exit(0); }
+    printf("Header: %s\n", headers[0]);
 
     /* How big is the message? */
     message_size=0;
-    if(!strcmp(argv[3],"GET"))
+    if(!strcmp(method,"GET"))
     {
         message_size+=strlen("%s %s%s%s HTTP/1.0\r\n");        /* method         */
-        message_size+=strlen(argv[3]);                         /* path           */
-        message_size+=strlen(argv[4]);                         /* headers        */
-        if(argc>5)
-            message_size+=strlen(argv[5]);                     /* query string   */
-        for(i=6;i<argc;i++)                                    /* headers        */
-            message_size+=strlen(argv[i])+strlen("\r\n");
-        message_size+=strlen("\r\n");                          /* blank line     */
+        message_size+=strlen(method);                          /* path           */
+        message_size+=strlen(path);                            /* headers        */
+        if( data != NULL)
+            message_size+=strlen(data);                        /* query string   */
+        if (headers != NULL) {
+            while((header = headers[i])) {
+                message_size+=strlen(header)+strlen("\r\n");
+                i++;
+            }
+            i = 0;
+        }
+        message_size+=strlen("\r\n");                           /* blank line     */
     }
     else
     {
         message_size+=strlen("%s %s HTTP/1.0\r\n");
-        message_size+=strlen(argv[3]);                         /* method         */
-        message_size+=strlen(argv[4]);                         /* path           */
-        for(i=6;i<argc;i++)                                    /* headers        */
-            message_size+=strlen(argv[i])+strlen("\r\n");
-        if(argc>5)
-            message_size+=strlen("Content-Length: %d\r\n")+10; /* content length */
-        message_size+=strlen("\r\n");                          /* blank line     */
-        if(argc>5)
-            message_size+=strlen(argv[5]);                     /* body           */
+        message_size+=strlen(method);                            /* method         */
+        message_size+=strlen(path);                              /* path           */
+        if (headers != NULL) {                                   /* headers        */
+            while((header = headers[i])) {
+                message_size+=strlen(header)+strlen("\r\n");
+                i++;
+            }
+            i = 0;
+            message_size+=strlen("Content-Length: %d\r\n")+10;   /* content length */
+        }
+            
+        if( data != NULL)
+            message_size+=strlen(data);                          /* body           */
     }
 
     /* allocate space for the message */
     message=malloc(message_size);
 
     /* fill in the parameters */
-    if(!strcmp(argv[3],"GET"))
+    if(!strcmp(method,"GET"))
     {
-        if(argc>5)
+        if( data != NULL)
             sprintf(message,"%s %s%s%s HTTP/1.0\r\n",
-                strlen(argv[3])>0?argv[3]:"GET",               /* method         */
-                strlen(argv[4])>0?argv[4]:"/",                 /* path           */
-                strlen(argv[5])>0?"?":"",                      /* ?              */
-                strlen(argv[5])>0?argv[5]:"");                 /* query string   */
+                strlen(method)>0?method:"GET",               /* method         */
+                strlen(path)>0?path:"/",                     /* path           */
+                strlen(data)>0?"?":"",                       /* ?              */
+                strlen(data)>0?data:"");                     /* query string   */
         else
             sprintf(message,"%s %s HTTP/1.0\r\n",
-                strlen(argv[3])>0?argv[3]:"GET",               /* method         */
-                strlen(argv[4])>0?argv[4]:"/");                /* path           */
-        for(i=6;i<argc;i++)                                    /* headers        */
-            {strcat(message,argv[i]);strcat(message,"\r\n");}
+                strlen(method)>0?method:"GET",               /* method         */
+                strlen(path)>0?path:"/");                    /* path           */
+        if (headers != NULL) {                               /* headers        */
+            while((header = headers[i])) {
+                strcat(message,header);strcat(message,"\r\n");
+                i++;
+            }
+            i = 0;
+        }
+
         strcat(message,"\r\n");                                /* blank line     */
     }
     else
     {
         sprintf(message,"%s %s HTTP/1.0\r\n",
-            strlen(argv[3])>0?argv[3]:"POST",                  /* method         */
-            strlen(argv[4])>0?argv[4]:"/");                    /* path           */
-        for(i=6;i<argc;i++)                                    /* headers        */
-            {strcat(message,argv[i]);strcat(message,"\r\n");}
-        if(argc>5)
-            sprintf(message+strlen(message),"Content-Length: %d\r\n",strlen(argv[5]));
+            strlen(method)>0?method:"POST",                    /* method         */
+            strlen(path)>0?path:"/");                          /* path           */
+        if (headers != NULL) {
+            while((header = headers[i])) {
+                strcat(message,header);strcat(message,"\r\n");
+                i++;
+            }
+            i = 0;
+        }
+        if( data != NULL)
+            sprintf(message+strlen(message),"Content-Length: %lu\r\n",strlen(data));
         strcat(message,"\r\n");                                /* blank line     */
-        if(argc>5)
-            strcat(message,argv[5]);                           /* body           */
+        if( data != NULL)
+            strcat(message,data);                           /* body           */
     }
 
     /* What are we going to send? */
