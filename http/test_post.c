@@ -4,7 +4,7 @@
 
 #include "post.h"
 int main(int argc,char *argv[]) {
-  int result;
+  char *result;
   char *headers[2];
   char *content_type = "Content-Type: application/x-www-form-urlencoded";
   headers[0] = malloc(strlen(content_type) + 1);

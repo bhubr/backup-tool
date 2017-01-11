@@ -8,14 +8,16 @@
 
 void error(const char *msg) { perror(msg); exit(0); }
 
-int send_request(char *host, int portno, char *method, char *path, char *data, char **headers)
+char * send_request(char *host, int portno, char *method, char *path, char *data, char **headers)
 {
     struct hostent *server;
     struct sockaddr_in serv_addr;
     int sockfd, bytes, sent, received, total, message_size;
     char *header;
-    char *message, response[4096];
+    char *message, *response;
     int i = 0;
+
+    response = malloc(4096);
 
     printf("Header: %s\n", headers[0]);
 
@@ -134,8 +136,8 @@ int send_request(char *host, int portno, char *method, char *path, char *data, c
     } while (sent < total);
 
     /* receive the response */
-    memset(response,0,sizeof(response));
-    total = sizeof(response)-1;
+    memset(response,0,4096);
+    total = 4096-1;
     received = 0;
     do {
         bytes = read(sockfd,response+received,total-received);
