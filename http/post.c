@@ -6,7 +6,8 @@
 #include <sys/socket.h> /* socket, connect */
 #include <netinet/in.h> /* struct sockaddr_in, struct sockaddr */
 #include <netdb.h> /* struct hostent, gethostbyname */
-#include <jansson.h>
+// #include <jansson.h>
+#include "post.h"
 
 #define BUF_SIZE 4096
 void error(const char *msg) { perror(msg); exit(0); }
@@ -36,7 +37,7 @@ struct json_t* parse_body_json(char *body) {
     return obj;
 }
 
-json_t* send_request(char *host, int portno, char *method, char *path, char *data, char **headers)
+p_response send_request(char *host, int portno, char *method, char *path, char *data, char **headers)
 {
     struct hostent *server;
     struct sockaddr_in serv_addr;
@@ -47,9 +48,10 @@ json_t* send_request(char *host, int portno, char *method, char *path, char *dat
     int i = 0;
     int header_len;
     char **response_headers;
+    p_response response_obj;
 
     response = malloc(BUF_SIZE);
-
+    response_obj = malloc(sizeof(response_obj));
     // printf("Header: %s\n", headers[0]);
 
     /* How big is the message? */
@@ -195,9 +197,9 @@ json_t* send_request(char *host, int portno, char *method, char *path, char *dat
         header_len = eol - response_ptr;
         if(header_len <= 1) break;
         // printf("\n\n\n\n ###### \nheader %i => %s, %d\n\n ##### \n\n", i, eol, eol - response);
-        response_headers[i] = malloc(header_len + 1);
+        response_headers[i] = malloc(header_len);
         // snprintf(response_headers[i], eol - response, "%s", response);
-        memcpy(response_headers[i], response_ptr, header_len);
+        memcpy(response_headers[i], response_ptr, header_len - 1);
         response_headers[i][header_len] = 0;
         printf("header %i (%d bytes) => %s\n", i, header_len, response_headers[i]);
         i++;
@@ -212,7 +214,8 @@ json_t* send_request(char *host, int portno, char *method, char *path, char *dat
 
     // printf("%s\n",response);
     free(response);
-    return parse_body_json(response_ptr);
-
+    response_obj->headers = response_headers;
+    response_obj->json_body = parse_body_json(response_ptr);
+    return response_obj;
     // return 0;
 }

@@ -22,12 +22,40 @@ void print_hex(unsigned char *s)
   printf("\n");
 }
 
+void free_response(p_response response) {
+    int i = 0;
+    while(response->headers[i]) {
+        // printf("%d - print before free: %s\n", i, response->headers[i]);
+        free(response->headers[i]);
+        i++;
+    }
+    free(response->headers);
+    free(response);
+}
+
+char *get_header(p_response response, char*key) {
+    int i = 0, header_len;
+    int key_len = strlen(key);
+    while(response->headers[i]) {
+        printf("get_header %s %d - print: %s\n", key, i, response->headers[i]);
+        header_len = strlen(response->headers[i]);
+        if (key_len > header_len + 1) return NULL;
+
+        if(strncmp(response->headers[i], key, key_len) == 0) {
+            return response->headers[i] + key_len + 2;
+        }
+        i++;
+    }
+    return NULL;
+}
+
 void listdir(const char *name, int level, int parent_id)
 {
     DIR *dir;
     struct dirent *entry;
     unsigned char *md5, *md5_ptr, *md5_hex, *post_data;
-    json_t *req_result, *value;
+    p_response req_result;
+    json_t *value;
     char *headers[2];
     int i, filesize;
     char *content_type = "Content-Type: application/x-www-form-urlencoded";
@@ -46,12 +74,12 @@ void listdir(const char *name, int level, int parent_id)
     post_data = malloc(150 + strlen(name));
     sprintf(post_data, "parent_id=%d&type=D&name=%s", parent_id, (unsigned char*)name);
     req_result = send_request("localhost", 8000, "POST", "/files", post_data, headers);
-    value = json_object_get(req_result, "id");
+    value = json_object_get(req_result->json_body, "id");
     parent_id = json_integer_value(value);
     // printf("---- Root dir %s has id %d ----\n\n", name, parent_id);
-    json_decref(req_result);
+    json_decref(req_result->json_body);
+    free_response(req_result);
     free(post_data);
-
 
     do {
         char path[1024];
@@ -65,7 +93,10 @@ void listdir(const char *name, int level, int parent_id)
             // printf("DIR %s", entry->d_name);
             sprintf(post_data, "parent_id=%d&type=D&name=%s", parent_id, entry->d_name);
             req_result = send_request("localhost", 8000, "POST", "/files", post_data, headers);
-            json_decref(req_result);
+            json_decref(req_result->json_body);
+            printf("HEADER DUMP for Set-Cookie => [%s]\n", get_header(req_result, "Set-Cookie"));
+            printf("HEADER DUMP for Content-Type => [%s]\n", get_header(req_result, "Content-Type"));
+            free_response(req_result);
             free(post_data);
 
             listdir(path, level + 1, parent_id);
@@ -90,7 +121,8 @@ void listdir(const char *name, int level, int parent_id)
                 }
                 req_result = send_request("localhost", 8000, "POST", "/files", post_data, headers);
                 free(md5);
-                json_decref(req_result);
+                json_decref(req_result->json_body);
+                free_response(req_result);
                 free(post_data);
             }
             else {
@@ -102,7 +134,8 @@ void listdir(const char *name, int level, int parent_id)
                 }
                 req_result = send_request("localhost", 8000, "POST", "/files", post_data, headers);
                 free(md5);
-                json_decref(req_result);
+                json_decref(req_result->json_body);
+                free_response(req_result);
                 free(post_data);
             }
             printf("%*s- %s\n", level*2, "", entry->d_name);
