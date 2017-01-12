@@ -3,6 +3,7 @@
 #include <dirent.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdbool.h>
 #include <string.h>
 #include <jansson.h>
 #include <sys/stat.h>
@@ -12,27 +13,38 @@
 
 #define FILE_MIN 1048576
 
+/**
+ * Dump hex representation of string (for i.e. md5 hashes)
+ */
 void print_hex(unsigned char *s)
 {
   while(*s) {
     printf("%02x", (unsigned char) (*s));
     s++;
   }
-    
   printf("\n");
 }
 
+/**
+ * Free a response object
+ *   - Free all headers
+ *   - Free JSON object
+ *   - Free response itself
+ */
 void free_response(p_response response) {
     int i = 0;
     while(response->headers[i]) {
-        // printf("%d - print before free: %s\n", i, response->headers[i]);
         free(response->headers[i]);
         i++;
     }
     free(response->headers);
+    json_decref(response->json_body);
     free(response);
 }
 
+/**
+ * Get named header from response headers
+ */
 char *get_header(p_response response, char*key) {
     int i = 0, header_len;
     int key_len = strlen(key);
@@ -50,6 +62,45 @@ char *get_header(p_response response, char*key) {
     return NULL;
 }
 
+int init_session(char* email, char* password, char** headers)
+{
+    p_response req_result;
+    unsigned char *post_data;
+    json_t *success_j;
+    bool success;
+
+    post_data = malloc(200);
+    sprintf(post_data, "email=%s&password=%s", email, password);
+    // printf("ROOT %s\n", name);
+    req_result = send_request("localhost", 8000, "POST", "/login", post_data, headers);
+
+    if(req_result->json_body == NULL) {
+        printf("REQUEST FAILED: non-JSON response\n");
+        exit(-1);
+    }
+    success_j = json_object_get(req_result->json_body, "success");
+    success = json_boolean_value(success_j);
+    printf("Status: %s\n", success ? "OK":"Error");
+    if (! success) {
+        json_t *error_j = json_object_get(req_result->json_body, "error");
+        printf("Encountered error: %s\n", json_string_value(error_j));
+        exit(0);
+    }
+    // printf("---- Root dir %s has id %d ----\n\n", name, parent_id);
+    // // json_decref(req_result->json_body);
+
+
+    // cookie_value = get_header(req_result, "Set-Cookie");
+    // printf("Cookie value: [%s]\n", cookie_value);
+    // print_hex(cookie_value);
+    // headers[1] = malloc(9 + strlen(cookie_value));
+    // sprintf(headers[1], "Cookie: %s", cookie_value);
+    // headers[2] = 0;
+    free_response(req_result);
+    free(post_data);
+    return 0;
+}
+
 void listdir(const char *name, int level, int parent_id, char** headers)
 {
     DIR *dir;
@@ -57,12 +108,9 @@ void listdir(const char *name, int level, int parent_id, char** headers)
     unsigned char *md5, *md5_ptr, *md5_hex, *post_data;
     p_response req_result;
     json_t *value;
-    // char *headers[3];
     int i, filesize;
-    char *content_type = "Content-Type: application/x-www-form-urlencoded";
     char *cookie_value, *set_cookie;
     struct stat st;
-
 
     if (!(dir = opendir(name)))
         return;
@@ -70,10 +118,6 @@ void listdir(const char *name, int level, int parent_id, char** headers)
         return;
 
     if( level == 0) {
-        // headers = malloc(3 * sizeof(char *));
-        headers[0] = malloc(strlen(content_type) + 1);
-        strcpy(headers[0], content_type);
-        headers[1] = 0;
 
         post_data = malloc(150 + strlen(name));
         sprintf(post_data, "parent_id=%d&type=D&name=%s", parent_id, (unsigned char*)name);
@@ -82,7 +126,7 @@ void listdir(const char *name, int level, int parent_id, char** headers)
         value = json_object_get(req_result->json_body, "id");
         parent_id = json_integer_value(value);
         printf("---- Root dir %s has id %d ----\n\n", name, parent_id);
-        json_decref(req_result->json_body);
+        // json_decref(req_result->json_body);
 
 
         cookie_value = get_header(req_result, "Set-Cookie");
@@ -107,7 +151,7 @@ void listdir(const char *name, int level, int parent_id, char** headers)
             printf("DIR %s\n", entry->d_name);
             sprintf(post_data, "parent_id=%d&type=D&name=%s", parent_id, entry->d_name);
             req_result = send_request("localhost", 8000, "POST", "/files", post_data, headers);
-            json_decref(req_result->json_body);
+            // json_decref(req_result->json_body);
             // printf("HEADER DUMP for Set-Cookie => [%s]\n", get_header(req_result, "Set-Cookie"));
             // printf("HEADER DUMP for Content-Type => [%s]\n", get_header(req_result, "Content-Type"));
             free_response(req_result);
@@ -136,7 +180,7 @@ void listdir(const char *name, int level, int parent_id, char** headers)
                 printf("REG %s\n", entry->d_name);
                 req_result = send_request("localhost", 8000, "POST", "/files", post_data, headers);
                 free(md5);
-                json_decref(req_result->json_body);
+                // json_decref(req_result->json_body);
                 free_response(req_result);
                 free(post_data);
             }
@@ -150,7 +194,6 @@ void listdir(const char *name, int level, int parent_id, char** headers)
                 printf("MP3 %s\n", entry->d_name);
                 req_result = send_request("localhost", 8000, "POST", "/files", post_data, headers);
                 free(md5);
-                json_decref(req_result->json_body);
                 free_response(req_result);
                 free(post_data);
             }
@@ -162,14 +205,25 @@ void listdir(const char *name, int level, int parent_id, char** headers)
 
 int main(int argc, char **argv)
 {
+    // We send data as urlencoded
+    char *content_type = "Content-Type: application/x-www-form-urlencoded";
+
+    // Initialize headers array (leave a slot for Cookie header)
     char *headers[3];
-    if(argc < 2) {
-        printf("Not enough arguments");
+
+    // Allocate and initialize content header
+    headers[0] = malloc(strlen(content_type) + 1);
+    strcpy(headers[0], content_type);
+    headers[1] = 0;
+
+    if(argc < 4) {
+        printf("Not enough arguments:\n  listdir <dir> <email> <pass>");
         exit(-1);
     }
+    init_session(argv[2], argv[3], headers);
+
     listdir(argv[1], 0, 0, headers);
     free(headers[0]);
     free(headers[1]);
-    // free(headers);
     return 0;
 }

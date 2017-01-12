@@ -141,7 +141,7 @@ p_response send_request(char *host, int portno, char *method, char *path, char *
     }
 
     /* What are we going to send? */
-    printf("Request:\n%s\n",message);
+    // printf("Request:\n%s\n",message);
 
     /* create the socket */
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
