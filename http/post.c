@@ -141,7 +141,7 @@ p_response send_request(char *host, int portno, char *method, char *path, char *
     }
 
     /* What are we going to send? */
-    // printf("Request:\n%s\n",message);
+    printf("Request:\n%s\n",message);
 
     /* create the socket */
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
@@ -204,7 +204,7 @@ p_response send_request(char *host, int portno, char *method, char *path, char *
         // printf("\n\n\n\n ###### \nheader %i => %s, %d\n\n ##### \n\n", i, eol, eol - response);
         response_headers[i] = malloc(header_len);
         // snprintf(response_headers[i], eol - response, "%s", response);
-        memcpy(response_headers[i], response_ptr, header_len );
+        memcpy(response_headers[i], response_ptr, header_len-1  );
         response_headers[i][header_len] = 0;
         // printf("header %i (%d bytes) => %s\n", i, header_len, response_headers[i]);
         i++;
