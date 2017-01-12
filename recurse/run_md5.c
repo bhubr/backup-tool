@@ -9,7 +9,7 @@ char * run_md5(char *file) {
     char *cmd;
     len = strlen(file);
     cmd = malloc(7 + len);
-    sprintf(cmd, "md5 \"%s\"", file);
+    sprintf(cmd, "md5 '%s'", file);
     // strcpy(cmd + 6, file);
     // cmd[len + 4] = 0;
     // printf("cmd: %s", cmd);

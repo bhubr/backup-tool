@@ -5,9 +5,12 @@
 #include <stdlib.h>
 #include <string.h>
 #include <jansson.h>
+#include <sys/stat.h>
 #include "../mp3/mp3_checksum.h"
 #include "../http/post.h"
 #include "run_md5.h"
+
+#define FILE_MIN 1048576
 
 void print_hex(unsigned char *s)
 {
@@ -19,16 +22,16 @@ void print_hex(unsigned char *s)
   printf("\n");
 }
 
-void listdir(const char *name, int level, parent_id)
+void listdir(const char *name, int level, int parent_id)
 {
     DIR *dir;
     struct dirent *entry;
     unsigned char *md5, *md5_ptr, *md5_hex, *post_data;
     json_t *req_result, *value;
     char *headers[2];
-    int i;
-    // int parent_id;
+    int i, filesize;
     char *content_type = "Content-Type: application/x-www-form-urlencoded";
+    struct stat st;
 
     headers[0] = malloc(strlen(content_type) + 1);
     strcpy(headers[0], content_type);
@@ -68,6 +71,13 @@ void listdir(const char *name, int level, parent_id)
             listdir(path, level + 1, parent_id);
         }
         else {
+            stat(path, &st);
+            filesize = st.st_size;
+            if(filesize < FILE_MIN) {
+                printf( "%s filesize %d < %d, skip\n", path, filesize, FILE_MIN );
+                continue;
+            }
+
             int entry_len = strlen(entry->d_name);
 
             if (strcmp(entry->d_name + entry_len - 4 , ".mp3") != 0) {

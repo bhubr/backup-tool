@@ -187,7 +187,8 @@ json_t* send_request(char *host, int portno, char *method, char *path, char *dat
     response_ptr = response;
     while(*response_ptr != '{' && *response_ptr != 0) response_ptr++;
 
-    // printf("%s\n",response_ptr);
+    printf("%s\n",response);
+    free(response);
     return parse_body_json(response_ptr);
 
     // return 0;
