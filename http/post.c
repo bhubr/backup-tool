@@ -5,17 +5,45 @@
 #include <sys/socket.h> /* socket, connect */
 #include <netinet/in.h> /* struct sockaddr_in, struct sockaddr */
 #include <netdb.h> /* struct hostent, gethostbyname */
+#include <jansson.h>
 
 #define BUF_SIZE 4096
 void error(const char *msg) { perror(msg); exit(0); }
 
-char * send_request(char *host, int portno, char *method, char *path, char *data, char **headers)
+struct json_t* parse_body_json(char *body) {
+    json_error_t err;
+    json_t *obj;
+    const char *key;
+    json_t *value;
+
+    obj = json_loads(body, JSON_DECODE_ANY, &err);
+    if(!obj) {
+        fprintf(stderr, "error: on line %d: %s\n", err.line, err.text);
+        return 1;
+    }
+
+    json_object_foreach(obj, key, value) {
+        /* block of code that uses key and value */
+        switch( json_typeof(value) ) {
+            case JSON_INTEGER:
+                printf("%s => %d\n", key, json_integer_value(value));
+                break;
+            case JSON_STRING:
+            default:
+                printf("%s => %s\n", key, json_string_value(value));
+        }
+    }
+    return obj;
+}
+
+json_t* send_request(char *host, int portno, char *method, char *path, char *data, char **headers)
 {
     struct hostent *server;
     struct sockaddr_in serv_addr;
     int sockfd, bytes, sent, received, total, message_size;
     char *header;
-    char *message, *response;
+    char *message, *response, *response_ptr;
+    char *eol;
     int i = 0;
 
     response = malloc(BUF_SIZE);
@@ -104,7 +132,7 @@ char * send_request(char *host, int portno, char *method, char *path, char *data
     }
 
     /* What are we going to send? */
-    printf("Request:\n%s\n",message);
+    // printf("Request:\n%s\n",message);
 
     /* create the socket */
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
@@ -154,10 +182,14 @@ char * send_request(char *host, int portno, char *method, char *path, char *data
 
     /* close the socket */
     close(sockfd);
+    free(message);
 
     /* process response */
-    printf("Response:\n%s\n",response);
+    response_ptr = response;
+    while(*response_ptr != '{' && *response_ptr != 0) response_ptr++;
 
-    free(message);
-    return 0;
+    printf("%s\n",response_ptr);
+    return parse_body_json(response_ptr);
+
+    // return 0;
 }

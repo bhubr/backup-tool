@@ -38,7 +38,3 @@ char * run_md5(char *file) {
 
     return output;
 }
-
-// int main(int argc, char **argv) {
-//     parse_output();
-// }

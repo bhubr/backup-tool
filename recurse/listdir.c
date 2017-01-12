@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <jansson.h>
 #include "../mp3/mp3_checksum.h"
 #include "../http/post.h"
 #include "run_md5.h"
@@ -22,7 +23,8 @@ void listdir(const char *name, int level)
 {
     DIR *dir;
     struct dirent *entry;
-    unsigned char *md5, *md5_ptr, *md5_hex, *req_result, *post_data;
+    unsigned char *md5, *md5_ptr, *md5_hex, *post_data;
+    json_t *req_result;
     char *headers[2];
     int i;
     char *content_type = "Content-Type: application/x-www-form-urlencoded";
@@ -45,11 +47,10 @@ void listdir(const char *name, int level)
                 continue;
             printf("%*s[%s]\n", level*2, "", entry->d_name);
             post_data = malloc(50 + strlen(entry->d_name));
-            printf("DIR %s", entry->d_name);
+            // printf("DIR %s", entry->d_name);
             sprintf(post_data, "type=D&name=%s", entry->d_name);
-            printf(", data: %s\n", post_data);
             req_result = send_request("localhost", 8000, "POST", "/files", post_data, headers);
-            free(req_result);
+            json_decref(req_result);
             free(post_data);
 
             listdir(path, level + 1);
@@ -67,7 +68,7 @@ void listdir(const char *name, int level)
                 }
                 req_result = send_request("localhost", 8000, "POST", "/files", post_data, headers);
                 free(md5);
-                free(req_result);
+                json_decref(req_result);
                 free(post_data);
             }
             else {
@@ -80,7 +81,7 @@ void listdir(const char *name, int level)
                 }
                 req_result = send_request("localhost", 8000, "POST", "/files", post_data, headers);
                 free(md5);
-                free(req_result);
+                json_decref(req_result);
                 free(post_data);
             }
             printf("%*s- %s\n", level*2, "", entry->d_name);
