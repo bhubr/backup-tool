@@ -2,9 +2,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#define BUFSIZE 128
+#define BUFSIZE 256
 
-int run_md5(char *file) {
+char * run_md5(char *file) {
     int len;
     char *cmd;
     len = strlen(file);
@@ -12,9 +12,12 @@ int run_md5(char *file) {
     strcpy(cmd, "md5 ");
     strcpy(cmd + 4, file);
     cmd[len + 4] = 0;
-     // = "md5 client";
 
+    char tmp_buf[BUFSIZE];
     char buf[BUFSIZE];
+
+    char *output = malloc(33);
+
     FILE *fp;
 
     if ((fp = popen(cmd, "r")) == NULL) {
@@ -23,8 +26,8 @@ int run_md5(char *file) {
     }
 
     while (fgets(buf, BUFSIZE, fp) != NULL) {
-        // Do whatever you want here...
-        // printf("OUTPUT: %s", buf);
+        sprintf(tmp_buf, "MD5 (%s) = ", file);
+        sprintf(output, "%s", buf + strlen(tmp_buf));
     }
     free(cmd);
 
@@ -33,7 +36,7 @@ int run_md5(char *file) {
         return -1;
     }
 
-    return 0;
+    return output;
 }
 
 // int main(int argc, char **argv) {

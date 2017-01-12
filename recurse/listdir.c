@@ -39,30 +39,49 @@ void listdir(const char *name, int level)
 
     do {
         char path[1024];
-        int len = snprintf(path, sizeof(path)-1, "%s/%s", name, entry->d_name);
-        path[len] = 0;
+        snprintf(path, sizeof(path), "%s/%s", name, entry->d_name);
         if (entry->d_type == DT_DIR) {
             if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)
                 continue;
             printf("%*s[%s]\n", level*2, "", entry->d_name);
+            post_data = malloc(50 + strlen(entry->d_name));
+            printf("DIR %s", entry->d_name);
+            sprintf(post_data, "type=D&name=%s", entry->d_name);
+            printf(", data: %s\n", post_data);
+            req_result = send_request("localhost", 8000, "POST", "/files", post_data, headers);
+            free(req_result);
+            free(post_data);
+
             listdir(path, level + 1);
         }
         else {
             int entry_len = strlen(entry->d_name);
 
             if (strcmp(entry->d_name + entry_len - 4 , ".mp3") != 0) {
-                run_md5(path);
-            }
-            else {
-                md5 = mp3_checksum(path);
-                post_data = malloc(43 + strlen(entry->d_name));
-                sprintf(post_data, "name=%s&md5=", entry->d_name);
+                md5 = run_md5(path);
+                post_data = malloc(50 + strlen(entry->d_name));
+                sprintf(post_data, "type=F&name=%s&md5=", entry->d_name);
+                printf(", data: %s\n", post_data);
                 for(i=0; i<16;i++){
                     sprintf(post_data + strlen(post_data), "%02x", md5[i]);
                 }
                 req_result = send_request("localhost", 8000, "POST", "/files", post_data, headers);
                 free(md5);
                 free(req_result);
+                free(post_data);
+            }
+            else {
+                md5 = mp3_checksum(path);
+                post_data = malloc(50 + strlen(entry->d_name));
+                sprintf(post_data, "type=F&name=%s&md5=", entry->d_name);
+                printf(", data: %s\n", post_data);
+                for(i=0; i<16;i++){
+                    sprintf(post_data + strlen(post_data), "%02x", md5[i]);
+                }
+                req_result = send_request("localhost", 8000, "POST", "/files", post_data, headers);
+                free(md5);
+                free(req_result);
+                free(post_data);
             }
             printf("%*s- %s\n", level*2, "", entry->d_name);
         }

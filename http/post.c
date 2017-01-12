@@ -6,7 +6,7 @@
 #include <netinet/in.h> /* struct sockaddr_in, struct sockaddr */
 #include <netdb.h> /* struct hostent, gethostbyname */
 
-#define BUF_SIZE 200000
+#define BUF_SIZE 4096
 void error(const char *msg) { perror(msg); exit(0); }
 
 char * send_request(char *host, int portno, char *method, char *path, char *data, char **headers)
