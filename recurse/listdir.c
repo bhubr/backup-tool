@@ -19,14 +19,15 @@ void print_hex(unsigned char *s)
   printf("\n");
 }
 
-void listdir(const char *name, int level)
+void listdir(const char *name, int level, parent_id)
 {
     DIR *dir;
     struct dirent *entry;
     unsigned char *md5, *md5_ptr, *md5_hex, *post_data;
-    json_t *req_result;
+    json_t *req_result, *value;
     char *headers[2];
     int i;
+    // int parent_id;
     char *content_type = "Content-Type: application/x-www-form-urlencoded";
 
     headers[0] = malloc(strlen(content_type) + 1);
@@ -39,6 +40,16 @@ void listdir(const char *name, int level)
     if (!(entry = readdir(dir)))
         return;
 
+    post_data = malloc(150 + strlen(name));
+    sprintf(post_data, "parent_id=%d&type=D&name=%s", parent_id, (unsigned char*)name);
+    req_result = send_request("localhost", 8000, "POST", "/files", post_data, headers);
+    value = json_object_get(req_result, "id");
+    parent_id = json_integer_value(value);
+    printf("---- Root dir %s has id %d ----\n\n", name, parent_id);
+    json_decref(req_result);
+    free(post_data);
+
+
     do {
         char path[1024];
         snprintf(path, sizeof(path), "%s/%s", name, entry->d_name);
@@ -46,22 +57,22 @@ void listdir(const char *name, int level)
             if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)
                 continue;
             printf("%*s[%s]\n", level*2, "", entry->d_name);
-            post_data = malloc(50 + strlen(entry->d_name));
+            post_data = malloc(150 + strlen(entry->d_name));
             // printf("DIR %s", entry->d_name);
-            sprintf(post_data, "type=D&name=%s", entry->d_name);
+            sprintf(post_data, "parent_id=%d&type=D&name=%s", parent_id, entry->d_name);
             req_result = send_request("localhost", 8000, "POST", "/files", post_data, headers);
             json_decref(req_result);
             free(post_data);
 
-            listdir(path, level + 1);
+            listdir(path, level + 1, parent_id);
         }
         else {
             int entry_len = strlen(entry->d_name);
 
             if (strcmp(entry->d_name + entry_len - 4 , ".mp3") != 0) {
                 md5 = run_md5(path);
-                post_data = malloc(50 + strlen(entry->d_name));
-                sprintf(post_data, "type=F&name=%s&md5=", entry->d_name);
+                post_data = malloc(150 + strlen(entry->d_name));
+                sprintf(post_data, "parent_id=%d&type=F&name=%s&md5=", parent_id, entry->d_name);
                 printf(", data: %s\n", post_data);
                 for(i=0; i<16;i++){
                     sprintf(post_data + strlen(post_data), "%02x", md5[i]);
@@ -73,8 +84,8 @@ void listdir(const char *name, int level)
             }
             else {
                 md5 = mp3_checksum(path);
-                post_data = malloc(50 + strlen(entry->d_name));
-                sprintf(post_data, "type=F&name=%s&md5=", entry->d_name);
+                post_data = malloc(150 + strlen(entry->d_name));
+                sprintf(post_data, "parent_id=%d&type=F&name=%s&md5=", parent_id, entry->d_name);
                 printf(", data: %s\n", post_data);
                 for(i=0; i<16;i++){
                     sprintf(post_data + strlen(post_data), "%02x", md5[i]);
@@ -96,6 +107,6 @@ int main(int argc, char **argv)
         printf("Not enough arguments");
         exit(-1);
     }
-    listdir(argv[1], 0);
+    listdir(argv[1], 0, 0);
     return 0;
 }
