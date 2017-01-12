@@ -37,11 +37,12 @@ char *get_header(p_response response, char*key) {
     int i = 0, header_len;
     int key_len = strlen(key);
     while(response->headers[i]) {
-        printf("get_header %s %d - print: %s\n", key, i, response->headers[i]);
+        
         header_len = strlen(response->headers[i]);
         if (key_len > header_len + 1) return NULL;
 
         if(strncmp(response->headers[i], key, key_len) == 0) {
+            // printf("get_header %s %d - print: %s\n", key, i, response->headers[i]);
             return response->headers[i] + key_len + 2;
         }
         i++;
@@ -56,9 +57,10 @@ void listdir(const char *name, int level, int parent_id)
     unsigned char *md5, *md5_ptr, *md5_hex, *post_data;
     p_response req_result;
     json_t *value;
-    char *headers[2];
+    char *headers[3];
     int i, filesize;
     char *content_type = "Content-Type: application/x-www-form-urlencoded";
+    char *cookie_value, *set_cookie;
     struct stat st;
 
     headers[0] = malloc(strlen(content_type) + 1);
@@ -73,11 +75,18 @@ void listdir(const char *name, int level, int parent_id)
 
     post_data = malloc(150 + strlen(name));
     sprintf(post_data, "parent_id=%d&type=D&name=%s", parent_id, (unsigned char*)name);
+    printf("ROOT %s\n", name);
     req_result = send_request("localhost", 8000, "POST", "/files", post_data, headers);
     value = json_object_get(req_result->json_body, "id");
     parent_id = json_integer_value(value);
     // printf("---- Root dir %s has id %d ----\n\n", name, parent_id);
     json_decref(req_result->json_body);
+
+
+    cookie_value = get_header(req_result, "Set-Cookie");
+    headers[1] = malloc(9 + strlen(cookie_value));
+    sprintf(headers[1], "Cookie: %s", cookie_value);
+    headers[2] = 0;
     free_response(req_result);
     free(post_data);
 
@@ -90,12 +99,12 @@ void listdir(const char *name, int level, int parent_id)
                 continue;
             printf("%*s[%s]\n", level*2, "", entry->d_name);
             post_data = malloc(150 + strlen(entry->d_name));
-            // printf("DIR %s", entry->d_name);
+            printf("DIR %s\n", entry->d_name);
             sprintf(post_data, "parent_id=%d&type=D&name=%s", parent_id, entry->d_name);
             req_result = send_request("localhost", 8000, "POST", "/files", post_data, headers);
             json_decref(req_result->json_body);
-            printf("HEADER DUMP for Set-Cookie => [%s]\n", get_header(req_result, "Set-Cookie"));
-            printf("HEADER DUMP for Content-Type => [%s]\n", get_header(req_result, "Content-Type"));
+            // printf("HEADER DUMP for Set-Cookie => [%s]\n", get_header(req_result, "Set-Cookie"));
+            // printf("HEADER DUMP for Content-Type => [%s]\n", get_header(req_result, "Content-Type"));
             free_response(req_result);
             free(post_data);
 
@@ -105,7 +114,7 @@ void listdir(const char *name, int level, int parent_id)
             stat(path, &st);
             filesize = st.st_size;
             if(filesize < FILE_MIN) {
-                printf( "%s filesize %d < %d, skip\n", path, filesize, FILE_MIN );
+                // printf( "%s filesize %d < %d, skip\n", path, filesize, FILE_MIN );
                 continue;
             }
 
@@ -119,6 +128,7 @@ void listdir(const char *name, int level, int parent_id)
                 for(i=0; i<16;i++){
                     sprintf(post_data + strlen(post_data), "%02x", md5[i]);
                 }
+                printf("REG %s\n", entry->d_name);
                 req_result = send_request("localhost", 8000, "POST", "/files", post_data, headers);
                 free(md5);
                 json_decref(req_result->json_body);
@@ -132,6 +142,7 @@ void listdir(const char *name, int level, int parent_id)
                 for(i=0; i<16;i++){
                     sprintf(post_data + strlen(post_data), "%02x", md5[i]);
                 }
+                printf("MP3 %s\n", entry->d_name);
                 req_result = send_request("localhost", 8000, "POST", "/files", post_data, headers);
                 free(md5);
                 json_decref(req_result->json_body);

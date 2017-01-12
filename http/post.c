@@ -54,6 +54,8 @@ p_response send_request(char *host, int portno, char *method, char *path, char *
     response_obj = malloc(sizeof(response_obj));
     // printf("Header: %s\n", headers[0]);
 
+    // printf("\n\n");
+
     /* How big is the message? */
     message_size=0;
     if(!strcmp(method,"GET"))
@@ -79,8 +81,10 @@ p_response send_request(char *host, int portno, char *method, char *path, char *
         message_size+=strlen(path);                              /* path           */
         if (headers != NULL) {                                   /* headers        */
             while((header = headers[i])) {
+                // printf("### header %s\n", header);
                 message_size+=strlen(header)+strlen("\r\n");
                 i++;
+                // printf("\n");
             }
             i = 0;
             message_size+=strlen("Content-Length: %d\r\n")+10;   /* content length */
@@ -124,6 +128,7 @@ p_response send_request(char *host, int portno, char *method, char *path, char *
         if (headers != NULL) {
             while((header = headers[i])) {
                 strcat(message,header);strcat(message,"\r\n");
+                // printf("### added header %s: \n---- BEGIN ----\n%s\n---- END ----\n", header, message);
                 i++;
             }
             i = 0;
@@ -199,9 +204,9 @@ p_response send_request(char *host, int portno, char *method, char *path, char *
         // printf("\n\n\n\n ###### \nheader %i => %s, %d\n\n ##### \n\n", i, eol, eol - response);
         response_headers[i] = malloc(header_len);
         // snprintf(response_headers[i], eol - response, "%s", response);
-        memcpy(response_headers[i], response_ptr, header_len - 1);
+        memcpy(response_headers[i], response_ptr, header_len );
         response_headers[i][header_len] = 0;
-        printf("header %i (%d bytes) => %s\n", i, header_len, response_headers[i]);
+        // printf("header %i (%d bytes) => %s\n", i, header_len, response_headers[i]);
         i++;
         response_ptr = eol + 1;
     // } while((*(eol+1)) != '\n');
