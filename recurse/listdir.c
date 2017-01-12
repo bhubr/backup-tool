@@ -68,6 +68,7 @@ int init_session(char* email, char* password, char** headers)
     unsigned char *post_data;
     json_t *success_j;
     bool success;
+    char *cookie_value;
 
     post_data = malloc(200);
     sprintf(post_data, "email=%s&password=%s", email, password);
@@ -90,12 +91,12 @@ int init_session(char* email, char* password, char** headers)
     // // json_decref(req_result->json_body);
 
 
-    // cookie_value = get_header(req_result, "Set-Cookie");
-    // printf("Cookie value: [%s]\n", cookie_value);
-    // print_hex(cookie_value);
-    // headers[1] = malloc(9 + strlen(cookie_value));
-    // sprintf(headers[1], "Cookie: %s", cookie_value);
-    // headers[2] = 0;
+    cookie_value = get_header(req_result, "Set-Cookie");
+    printf("Cookie value: [%s]\n", cookie_value);
+    print_hex(cookie_value);
+    headers[1] = malloc(9 + strlen(cookie_value));
+    sprintf(headers[1], "Cookie: %s", cookie_value);
+    headers[2] = 0;
     free_response(req_result);
     free(post_data);
     return 0;
@@ -126,15 +127,7 @@ void listdir(const char *name, int level, int parent_id, char** headers)
         value = json_object_get(req_result->json_body, "id");
         parent_id = json_integer_value(value);
         printf("---- Root dir %s has id %d ----\n\n", name, parent_id);
-        // json_decref(req_result->json_body);
 
-
-        cookie_value = get_header(req_result, "Set-Cookie");
-        printf("Cookie value: [%s]\n", cookie_value);
-        print_hex(cookie_value);
-        headers[1] = malloc(9 + strlen(cookie_value));
-        sprintf(headers[1], "Cookie: %s", cookie_value);
-        headers[2] = 0;
         free_response(req_result);
         free(post_data);
     }
