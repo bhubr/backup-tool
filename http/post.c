@@ -1,3 +1,4 @@
+#include <stdbool.h> /* printf, sprintf */
 #include <stdio.h> /* printf, sprintf */
 #include <stdlib.h> /* exit, atoi, malloc, free */
 #include <unistd.h> /* read, write, close */
@@ -19,7 +20,7 @@ struct json_t* parse_body_json(char *body) {
     obj = json_loads(body, JSON_DECODE_ANY, &err);
     if(!obj) {
         fprintf(stderr, "error: on line %d: %s\n", err.line, err.text);
-        return 1;
+        return NULL;
     }
 
     // json_object_foreach(obj, key, value) {
@@ -44,6 +45,8 @@ json_t* send_request(char *host, int portno, char *method, char *path, char *dat
     char *message, *response, *response_ptr;
     char *eol;
     int i = 0;
+    int header_len;
+    char **response_headers;
 
     response = malloc(BUF_SIZE);
 
@@ -183,11 +186,31 @@ json_t* send_request(char *host, int portno, char *method, char *path, char *dat
     close(sockfd);
     free(message);
 
+    response_headers = malloc(50 * sizeof(char *));
+    response_ptr = response;
+
+    i = 0;
+    do {
+        eol = strchr(response_ptr, '\n');
+        header_len = eol - response_ptr;
+        if(header_len <= 1) break;
+        // printf("\n\n\n\n ###### \nheader %i => %s, %d\n\n ##### \n\n", i, eol, eol - response);
+        response_headers[i] = malloc(header_len + 1);
+        // snprintf(response_headers[i], eol - response, "%s", response);
+        memcpy(response_headers[i], response_ptr, header_len);
+        response_headers[i][header_len] = 0;
+        printf("header %i (%d bytes) => %s\n", i, header_len, response_headers[i]);
+        i++;
+        response_ptr = eol + 1;
+    // } while((*(eol+1)) != '\n');
+    } while(true);
+    response_headers[i] = 0;
+
     /* process response */
     response_ptr = response;
     while(*response_ptr != '{' && *response_ptr != 0) response_ptr++;
 
-    printf("%s\n",response);
+    // printf("%s\n",response);
     free(response);
     return parse_body_json(response_ptr);
 
