@@ -22,17 +22,16 @@ struct json_t* parse_body_json(char *body) {
         return 1;
     }
 
-    json_object_foreach(obj, key, value) {
-        /* block of code that uses key and value */
-        switch( json_typeof(value) ) {
-            case JSON_INTEGER:
-                printf("%s => %d\n", key, json_integer_value(value));
-                break;
-            case JSON_STRING:
-            default:
-                printf("%s => %s\n", key, json_string_value(value));
-        }
-    }
+    // json_object_foreach(obj, key, value) {
+    //     switch( json_typeof(value) ) {
+    //         case JSON_INTEGER:
+    //             printf("%s => %d\n", key, json_integer_value(value));
+    //             break;
+    //         case JSON_STRING:
+    //         default:
+    //             printf("%s => %s\n", key, json_string_value(value));
+    //     }
+    // }
     return obj;
 }
 
@@ -48,7 +47,7 @@ json_t* send_request(char *host, int portno, char *method, char *path, char *dat
 
     response = malloc(BUF_SIZE);
 
-    printf("Header: %s\n", headers[0]);
+    // printf("Header: %s\n", headers[0]);
 
     /* How big is the message? */
     message_size=0;
@@ -188,7 +187,7 @@ json_t* send_request(char *host, int portno, char *method, char *path, char *dat
     response_ptr = response;
     while(*response_ptr != '{' && *response_ptr != 0) response_ptr++;
 
-    printf("%s\n",response_ptr);
+    // printf("%s\n",response_ptr);
     return parse_body_json(response_ptr);
 
     // return 0;

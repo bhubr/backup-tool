@@ -45,13 +45,14 @@ void listdir(const char *name, int level, parent_id)
     req_result = send_request("localhost", 8000, "POST", "/files", post_data, headers);
     value = json_object_get(req_result, "id");
     parent_id = json_integer_value(value);
-    printf("---- Root dir %s has id %d ----\n\n", name, parent_id);
+    // printf("---- Root dir %s has id %d ----\n\n", name, parent_id);
     json_decref(req_result);
     free(post_data);
 
 
     do {
         char path[1024];
+        // printf("entry: %s type: %d\n", entry->d_name, entry->d_type);
         snprintf(path, sizeof(path), "%s/%s", name, entry->d_name);
         if (entry->d_type == DT_DIR) {
             if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)
@@ -70,10 +71,10 @@ void listdir(const char *name, int level, parent_id)
             int entry_len = strlen(entry->d_name);
 
             if (strcmp(entry->d_name + entry_len - 4 , ".mp3") != 0) {
+                // printf("run md5 on entry: %s type: %d\n", entry->d_name, entry->d_type);
                 md5 = run_md5(path);
                 post_data = malloc(150 + strlen(entry->d_name));
                 sprintf(post_data, "parent_id=%d&type=F&name=%s&md5=", parent_id, entry->d_name);
-                printf(", data: %s\n", post_data);
                 for(i=0; i<16;i++){
                     sprintf(post_data + strlen(post_data), "%02x", md5[i]);
                 }
@@ -86,7 +87,6 @@ void listdir(const char *name, int level, parent_id)
                 md5 = mp3_checksum(path);
                 post_data = malloc(150 + strlen(entry->d_name));
                 sprintf(post_data, "parent_id=%d&type=F&name=%s&md5=", parent_id, entry->d_name);
-                printf(", data: %s\n", post_data);
                 for(i=0; i<16;i++){
                     sprintf(post_data + strlen(post_data), "%02x", md5[i]);
                 }

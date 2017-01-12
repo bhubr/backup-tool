@@ -8,10 +8,11 @@ char * run_md5(char *file) {
     int len;
     char *cmd;
     len = strlen(file);
-    cmd = malloc(5 + len);
-    strcpy(cmd, "md5 ");
-    strcpy(cmd + 4, file);
-    cmd[len + 4] = 0;
+    cmd = malloc(7 + len);
+    sprintf(cmd, "md5 \"%s\"", file);
+    // strcpy(cmd + 6, file);
+    // cmd[len + 4] = 0;
+    // printf("cmd: %s", cmd);
 
     char tmp_buf[BUFSIZE];
     char buf[BUFSIZE];
