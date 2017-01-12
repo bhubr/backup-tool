@@ -6,6 +6,7 @@
 #include <netinet/in.h> /* struct sockaddr_in, struct sockaddr */
 #include <netdb.h> /* struct hostent, gethostbyname */
 
+#define BUF_SIZE 200000
 void error(const char *msg) { perror(msg); exit(0); }
 
 char * send_request(char *host, int portno, char *method, char *path, char *data, char **headers)
@@ -17,7 +18,7 @@ char * send_request(char *host, int portno, char *method, char *path, char *data
     char *message, *response;
     int i = 0;
 
-    response = malloc(4096);
+    response = malloc(BUF_SIZE);
 
     printf("Header: %s\n", headers[0]);
 
@@ -136,8 +137,8 @@ char * send_request(char *host, int portno, char *method, char *path, char *data
     } while (sent < total);
 
     /* receive the response */
-    memset(response,0,4096);
-    total = 4096-1;
+    memset(response,0,BUF_SIZE);
+    total = BUF_SIZE-1;
     received = 0;
     do {
         bytes = read(sockfd,response+received,total-received);

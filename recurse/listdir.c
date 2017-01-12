@@ -55,12 +55,12 @@ void listdir(const char *name, int level)
             }
             else {
                 md5 = mp3_checksum(path);
-                post_data = malloc(43 + strlen(path));
-                sprintf(post_data, "path=%s&md5=", path);
+                post_data = malloc(43 + strlen(entry->d_name));
+                sprintf(post_data, "name=%s&md5=", entry->d_name);
                 for(i=0; i<16;i++){
                     sprintf(post_data + strlen(post_data), "%02x", md5[i]);
                 }
-                req_result = send_request("192.168.1.49", 8000, "POST", "/", post_data, headers);
+                req_result = send_request("localhost", 8000, "POST", "/files", post_data, headers);
                 free(md5);
                 free(req_result);
             }
