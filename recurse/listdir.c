@@ -8,22 +8,11 @@
 #include <jansson.h>
 #include <sys/stat.h>
 #include "../mp3/mp3_checksum.h"
-#include "../http/post.h"
+#include "post.h"
 #include "run_md5.h"
 
 #define FILE_MIN 1048576
 
-/**
- * Dump hex representation of string (for i.e. md5 hashes)
- */
-void print_hex(unsigned char *s)
-{
-  while(*s) {
-    printf("%02x", (unsigned char) (*s));
-    s++;
-  }
-  printf("\n");
-}
 
 /**
  * Free a response object
@@ -102,10 +91,11 @@ void listdir(const char *name, int level, int parent_id, char** headers)
     struct dirent *entry;
     unsigned char *md5, *mp3_md5, *md5_ptr, *md5_hex, post_data[2048];
     p_response req_result;
-    json_t *value;
+    json_t *file_j, *id_j;
     int i, filesize;
     char *cookie_value, *set_cookie;
     struct stat st;
+    int new_parent_id;
 
     if (!(dir = opendir(name)))
         return;
@@ -116,9 +106,10 @@ void listdir(const char *name, int level, int parent_id, char** headers)
         sprintf(post_data, "parent_id=%d&type=D&name=%s", parent_id, (unsigned char*)name);
         // printf("ROOT %s\n", name);
         req_result = send_request("192.168.1.71", 8000, "POST", "/files", post_data, headers);
-        value = json_object_get(req_result->json_body, "id");
-        parent_id = json_integer_value(value);
-        // printf("---- Root dir %s has id %d ----\n\n", name, parent_id);
+        file_j = json_object_get(req_result->json_body, "file");
+        id_j = json_object_get(file_j, "id");
+        parent_id = json_integer_value(id_j);
+        printf("---- Root dir %s has id %d ----\n\n", name, parent_id);
         free_response(req_result);
     }
 
@@ -133,10 +124,13 @@ void listdir(const char *name, int level, int parent_id, char** headers)
             printf("%*s[%s]\n", level*2, "", entry->d_name);
             sprintf(post_data, "parent_id=%d&type=D&name=%s", parent_id, entry->d_name);
             req_result = send_request("192.168.1.71", 8000, "POST", "/files", post_data, headers);
-            value = json_object_get(req_result->json_body, "id");
+            file_j = json_object_get(req_result->json_body, "file");
+            id_j = json_object_get(file_j, "id");
+            new_parent_id = json_integer_value(id_j);
+            printf("---- dir %s has id %d ----\n\n", name, new_parent_id);
 
             free_response(req_result);
-            listdir(path, level + 1, parent_id, headers);
+            listdir(path, level + 1, new_parent_id, headers);
         }
         // IS REGULAR FILE
         else {

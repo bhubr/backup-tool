@@ -22,8 +22,10 @@ first commits).
 * First scan the whole tree so as to know how many files are to be processed
 * Detect duplicates
 * "touch" files that already existed
-* Create a "session" when the client launches, finish it at the end (then check not created files)
 * URL-ENCODE AMPERSANDS (&) in file names!!
+* Srv: Create a "session" when the client launches, finish it at the end (then check not created files)
+* Srv: CHECK HOST FROM IP first then take volume from this host
+* Restrict to file type...
 
 ## Done
 

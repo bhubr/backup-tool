@@ -27,7 +27,7 @@ char * run_md5(char *file) {
     cmd[j] = 0;
     // strcpy(cmd + 6, file);
     // cmd[len + 4] = 0;
-    printf("cmd: %s\n", cmd);
+    // printf("cmd: %s\n", cmd);
 
     char tmp_buf[BUFSIZE];
     char buf[BUFSIZE];
@@ -49,9 +49,11 @@ char * run_md5(char *file) {
         // 
         strcat(tmp_buf, buf);
     }
-    printf("Output buf: %s\n", tmp_buf);
-    snprintf(output, 33, tmp_buf + 9 + len);
-    printf("Output: %s\n", output);
+    // printf("Output buf: %s\n", tmp_buf);
+    // snprintf(output, 33, tmp_buf + 9 + len);
+    memcpy(output, tmp_buf + 9 + len, 32);
+    output[32] = 0;
+    // printf("Output: %s\n", output);
     free(cmd);
 
     if(pclose(fp))  {
