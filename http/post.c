@@ -51,10 +51,10 @@ p_response send_request(char *host, int portno, char *method, char *path, char *
     char status_code[4];
     p_response response_obj = NULL;
     struct response_wrapper re;
-printf(" ====> response&response_obj ptr before alloc: %p %p\n", response, response_obj);
+// printf(" ====> response&response_obj ptr before alloc: %p %p\n", response, response_obj);
     response = malloc(BUF_SIZE);
     response_obj = malloc(sizeof(re));
-printf(" ====> response&response_obj ptr after alloc: %p %p\n", response, response_obj);
+// printf(" ====> response&response_obj ptr after alloc: %p %p\n", response, response_obj);
     // printf("Header: %s\n", headers[0]);
 
     // printf("\n\n");
@@ -144,7 +144,7 @@ printf(" ====> response&response_obj ptr after alloc: %p %p\n", response, respon
     }
 
     /* What are we going to send? */
-    printf("Request:\n%s\nCOOKIE HDR:%s\n",message, headers[1]);
+    // printf("Request:\n%s\nCOOKIE HDR:%s\n",message, headers[1]);
 
     /* create the socket */
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
@@ -196,9 +196,9 @@ printf(" ====> response&response_obj ptr after alloc: %p %p\n", response, respon
 
     /* close the socket */
     close(sockfd);
-    printf("BEFORE FREE message\n");
+    // printf("BEFORE FREE message\n");
     free(message);
-    printf("AFTER FREE message\n");
+    // printf("AFTER FREE message\n");
 
     response_headers = malloc(50 * sizeof(char *));
     response_ptr = response;
@@ -228,7 +228,7 @@ printf(" ====> response&response_obj ptr after alloc: %p %p\n", response, respon
     // free(response);
     snprintf(status_code, 4, "%s", response_headers[0] + 9);
     response_obj->status_code = atoi(status_code);
-    printf("Status code: %s %d\n", status_code, response_obj->status_code);
+    // printf("Status code: %s %d\n", status_code, response_obj->status_code);
     response_obj->raw_body = response;
     response_obj->headers = response_headers;
     response_obj->json_body = parse_body_json(response_ptr);
@@ -240,9 +240,9 @@ printf(" ====> response&response_obj ptr after alloc: %p %p\n", response, respon
     }
     else {
         json_t *id_j = json_object_get(response_obj->json_body, "id");
-        printf("GOT ID: %lld\n", json_integer_value(id_j) );
+        // printf("GOT ID: %lld\n", json_integer_value(id_j) );
     }
-    printf("response obj ptr, JSON body ptr: %p %p\n", response_obj, response_obj->json_body);
+    // printf("response obj ptr, JSON body ptr: %p %p\n", response_obj, response_obj->json_body);
     return response_obj;
     // return 0;
 }

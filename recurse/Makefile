@@ -1,4 +1,4 @@
-CFLAGS=-g -v
+CFLAGS=
 # -da -Q
 
 all: build
