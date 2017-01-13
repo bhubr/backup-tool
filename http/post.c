@@ -9,7 +9,7 @@
 // #include <jansson.h>
 #include "post.h"
 
-#define BUF_SIZE 4096
+#define BUF_SIZE 8192
 void error(const char *msg) { perror(msg); exit(0); }
 
 struct json_t* parse_body_json(char *body) {
@@ -43,15 +43,18 @@ p_response send_request(char *host, int portno, char *method, char *path, char *
     struct sockaddr_in serv_addr;
     int sockfd, bytes, sent, received, total, message_size;
     char *header;
-    char *message, *response, *response_ptr;
+    char *message, *response = NULL, *response_ptr;
     char *eol;
     int i = 0;
     int header_len;
     char **response_headers;
-    p_response response_obj;
-
+    char status_code[4];
+    p_response response_obj = NULL;
+    struct response_wrapper re;
+printf(" ====> response&response_obj ptr before alloc: %p %p\n", response, response_obj);
     response = malloc(BUF_SIZE);
-    response_obj = malloc(sizeof(response_obj));
+    response_obj = malloc(sizeof(re));
+printf(" ====> response&response_obj ptr after alloc: %p %p\n", response, response_obj);
     // printf("Header: %s\n", headers[0]);
 
     // printf("\n\n");
@@ -141,7 +144,7 @@ p_response send_request(char *host, int portno, char *method, char *path, char *
     }
 
     /* What are we going to send? */
-    // printf("Request:\n%s\n",message);
+    printf("Request:\n%s\nCOOKIE HDR:%s\n",message, headers[1]);
 
     /* create the socket */
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
@@ -186,12 +189,16 @@ p_response send_request(char *host, int portno, char *method, char *path, char *
         received+=bytes;
     } while (received < total);
 
-    if (received == total)
+    if (received == total) {
         error("ERROR storing complete response from socket");
+        printf("%s\n",response);
+    }
 
     /* close the socket */
     close(sockfd);
+    printf("BEFORE FREE message\n");
     free(message);
+    printf("AFTER FREE message\n");
 
     response_headers = malloc(50 * sizeof(char *));
     response_ptr = response;
@@ -218,9 +225,24 @@ p_response send_request(char *host, int portno, char *method, char *path, char *
     while(*response_ptr != '{' && *response_ptr != 0) response_ptr++;
 
     // printf("%s\n",response);
-    free(response);
+    // free(response);
+    snprintf(status_code, 4, "%s", response_headers[0] + 9);
+    response_obj->status_code = atoi(status_code);
+    printf("Status code: %s %d\n", status_code, response_obj->status_code);
+    response_obj->raw_body = response;
     response_obj->headers = response_headers;
     response_obj->json_body = parse_body_json(response_ptr);
+    if(response_obj->status_code != 200) {
+        json_t *error_j = json_object_get(response_obj->json_body, "error");
+        printf("\n#######\n# Encountered error (status %d): %s\n#######\n", response_obj->status_code, json_string_value(error_j));
+        json_decref(error_j);
+        return NULL;
+    }
+    else {
+        json_t *id_j = json_object_get(response_obj->json_body, "id");
+        printf("GOT ID: %lld\n", json_integer_value(id_j) );
+    }
+    printf("response obj ptr, JSON body ptr: %p %p\n", response_obj, response_obj->json_body);
     return response_obj;
     // return 0;
 }

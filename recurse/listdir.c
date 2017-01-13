@@ -11,7 +11,7 @@
 #include "../http/post.h"
 #include "run_md5.h"
 
-#define FILE_MIN 1048576
+#define FILE_MIN 1 // 048576
 
 /**
  * Dump hex representation of string (for i.e. md5 hashes)
@@ -34,12 +34,21 @@ void print_hex(unsigned char *s)
 void free_response(p_response response) {
     int i = 0;
     while(response->headers[i]) {
+        // printf("# before header %d => %s\n", i, response->headers[i]);
         free(response->headers[i]);
         i++;
     }
+    // printf("# headers strings done\n");
     free(response->headers);
+    // printf("# headers array done\n");
+    printf(" ====> response ptr before free: %p\n", response->raw_body);
+    free(response->raw_body);
+    printf("# raw body done\n");
     json_decref(response->json_body);
+    printf("# json obj done\n");
+    printf(" ====> response obj ptr before free: %p\n", response);
     free(response);
+    printf("# response done\n");
 }
 
 /**
@@ -62,7 +71,7 @@ char *get_header(p_response response, char*key) {
     return NULL;
 }
 
-int init_session(char* email, char* password, char** headers)
+int init_session(char* email, char* password, char *mount_point, char** headers)
 {
     p_response req_result;
     unsigned char *post_data;
@@ -71,9 +80,8 @@ int init_session(char* email, char* password, char** headers)
     char *cookie_value;
 
     post_data = malloc(200);
-    sprintf(post_data, "email=%s&password=%s", email, password);
-    // printf("ROOT %s\n", name);
-    req_result = send_request("localhost", 8000, "POST", "/login", post_data, headers);
+    sprintf(post_data, "email=%s&password=%s&mount_point=%s", email, password, mount_point);
+    req_result = send_request("192.168.1.71", 8000, "POST", "/login", post_data, headers);
 
     if(req_result->json_body == NULL) {
         printf("REQUEST FAILED: non-JSON response\n");
@@ -81,19 +89,13 @@ int init_session(char* email, char* password, char** headers)
     }
     success_j = json_object_get(req_result->json_body, "success");
     success = json_boolean_value(success_j);
-    printf("Status: %s\n", success ? "OK":"Error");
     if (! success) {
         json_t *error_j = json_object_get(req_result->json_body, "error");
         printf("Encountered error: %s\n", json_string_value(error_j));
         exit(0);
     }
-    // printf("---- Root dir %s has id %d ----\n\n", name, parent_id);
-    // // json_decref(req_result->json_body);
-
 
     cookie_value = get_header(req_result, "Set-Cookie");
-    printf("Cookie value: [%s]\n", cookie_value);
-    print_hex(cookie_value);
     headers[1] = malloc(9 + strlen(cookie_value));
     sprintf(headers[1], "Cookie: %s", cookie_value);
     headers[2] = 0;
@@ -106,7 +108,7 @@ void listdir(const char *name, int level, int parent_id, char** headers)
 {
     DIR *dir;
     struct dirent *entry;
-    unsigned char *md5, *md5_ptr, *md5_hex, *post_data;
+    unsigned char *md5, *md5_ptr, *md5_hex, post_data[2048];
     p_response req_result;
     json_t *value;
     int i, filesize;
@@ -119,37 +121,46 @@ void listdir(const char *name, int level, int parent_id, char** headers)
         return;
 
     if( level == 0) {
-
-        post_data = malloc(150 + strlen(name));
+printf("--- level 0 BEGIN ---\n");
+        // post_data = malloc(150 + strlen(name));
         sprintf(post_data, "parent_id=%d&type=D&name=%s", parent_id, (unsigned char*)name);
         printf("ROOT %s\n", name);
-        req_result = send_request("localhost", 8000, "POST", "/files", post_data, headers);
+        req_result = send_request("192.168.1.71", 8000, "POST", "/files", post_data, headers);
         value = json_object_get(req_result->json_body, "id");
         parent_id = json_integer_value(value);
         printf("---- Root dir %s has id %d ----\n\n", name, parent_id);
-
+printf("--- level 0 BEFORE FREE ---\n");
         free_response(req_result);
-        free(post_data);
+        // free(post_data);
+printf("--- level 0 END ---\n");
     }
 
     do {
         char path[1024];
-        // printf("entry: %s type: %d\n", entry->d_name, entry->d_type);
+        printf("entry: %s type: %d\n", entry->d_name, entry->d_type);
         snprintf(path, sizeof(path), "%s/%s", name, entry->d_name);
         if (entry->d_type == DT_DIR) {
+printf("--- DIR BEGIN ---\n");
             if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)
                 continue;
             printf("%*s[%s]\n", level*2, "", entry->d_name);
-            post_data = malloc(150 + strlen(entry->d_name));
+            // post_data = malloc(150 + strlen(entry->d_name));
             printf("DIR %s\n", entry->d_name);
             sprintf(post_data, "parent_id=%d&type=D&name=%s", parent_id, entry->d_name);
-            req_result = send_request("localhost", 8000, "POST", "/files", post_data, headers);
+            printf("DIR %s post_data %s\n", entry->d_name, post_data);
+            req_result = send_request("192.168.1.71", 8000, "POST", "/files", post_data, headers);
+            printf("response obj ptr, JSON body ptr: %p %p\n", req_result, req_result->json_body);
+            value = json_object_get(req_result->json_body, "id");
+
+            printf("GOT ID %lld\n", json_integer_value(value) );
             // json_decref(req_result->json_body);
             // printf("HEADER DUMP for Set-Cookie => [%s]\n", get_header(req_result, "Set-Cookie"));
             // printf("HEADER DUMP for Content-Type => [%s]\n", get_header(req_result, "Content-Type"));
+printf("--- DIR BEFORE FREE ---\n");
             free_response(req_result);
-            free(post_data);
-
+printf("#1\n");
+            // free(post_data);
+printf("--- DIR END ---\n");
             listdir(path, level + 1, parent_id, headers);
         }
         else {
@@ -163,32 +174,46 @@ void listdir(const char *name, int level, int parent_id, char** headers)
             int entry_len = strlen(entry->d_name);
 
             if (strcmp(entry->d_name + entry_len - 4 , ".mp3") != 0) {
-                // printf("run md5 on entry: %s type: %d\n", entry->d_name, entry->d_type);
+printf("--- REG BEGIN ---\n");
+                
                 md5 = run_md5(path);
-                post_data = malloc(150 + strlen(entry->d_name));
-                sprintf(post_data, "parent_id=%d&type=F&name=%s&md5=", parent_id, entry->d_name);
-                for(i=0; i<16;i++){
-                    sprintf(post_data + strlen(post_data), "%02x", md5[i]);
-                }
+                printf("run md5 on entry: %s type: %d  => md5: %s\n", entry->d_name, entry->d_type, md5);
+                // post_data = malloc(150 + strlen(entry->d_name));
+                sprintf(post_data, "parent_id=%d&type=F&name=%s&md5=%s", parent_id, entry->d_name, md5);
+                printf("post_data %s\n", post_data);
+                // for(i=0; i<16;i++){
+                //     sprintf(post_data + strlen(post_data), "%02x", md5[i]);
+                // }
                 printf("REG %s\n", entry->d_name);
-                req_result = send_request("localhost", 8000, "POST", "/files", post_data, headers);
+                req_result = send_request("192.168.1.71", 8000, "POST", "/files", post_data, headers);
+printf("--- REG BEFORE FREE ---\n");
                 free(md5);
-                // json_decref(req_result->json_body);
+printf("#1\n");
                 free_response(req_result);
-                free(post_data);
+printf("#2\n");
+                // free(post_data);
+printf("--- REG END ---\n");
             }
             else {
+printf("--- MP3 BEGIN ---\n");
                 md5 = mp3_checksum(path);
-                post_data = malloc(150 + strlen(entry->d_name));
+printf("--- MP3 md5: %s ---\n", md5);
+                // post_data = malloc(150 + strlen(entry->d_name));
                 sprintf(post_data, "parent_id=%d&type=F&name=%s&md5=", parent_id, entry->d_name);
+printf("--- MP3 post data #1: %s ---\n", post_data);
                 for(i=0; i<16;i++){
                     sprintf(post_data + strlen(post_data), "%02x", md5[i]);
                 }
-                printf("MP3 %s\n", entry->d_name);
-                req_result = send_request("localhost", 8000, "POST", "/files", post_data, headers);
+printf("--- MP3 post data #2: %s ---\n", post_data);
+                printf("MP3 %s BEFORE REQ\n", entry->d_name);
+                req_result = send_request("192.168.1.71", 8000, "POST", "/files", post_data, headers);
+printf("--- MP3 BEFORE FREE ---\n");
                 free(md5);
+printf("#1\n");
                 free_response(req_result);
-                free(post_data);
+printf("#2\n");
+                // free(post_data);
+printf("--- MP3 END ---\n");
             }
             printf("%*s- %s\n", level*2, "", entry->d_name);
         }
@@ -209,11 +234,11 @@ int main(int argc, char **argv)
     strcpy(headers[0], content_type);
     headers[1] = 0;
 
-    if(argc < 4) {
-        printf("Not enough arguments:\n  listdir <dir> <email> <pass>");
+    if(argc < 5) {
+        printf("Not enough arguments:\n  listdir <dir> <email> <pass> <mount point>");
         exit(-1);
     }
-    init_session(argv[2], argv[3], headers);
+    init_session(argv[2], argv[3], argv[4], headers);
 
     listdir(argv[1], 0, 0, headers);
     free(headers[0]);

@@ -1,7 +1,9 @@
 #include <jansson.h>
 
-typedef struct {
+typedef struct response_wrapper {
   char **headers;
+  int status_code;
+  char *raw_body;
   json_t *json_body;  
 } response;
 
