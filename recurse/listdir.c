@@ -11,7 +11,7 @@
 #include "../http/post.h"
 #include "run_md5.h"
 
-#define FILE_MIN 1 // 048576
+#define FILE_MIN 1048576
 
 /**
  * Dump hex representation of string (for i.e. md5 hashes)
@@ -100,7 +100,7 @@ void listdir(const char *name, int level, int parent_id, char** headers)
 {
     DIR *dir;
     struct dirent *entry;
-    unsigned char *md5, *md5_ptr, *md5_hex, post_data[2048];
+    unsigned char *md5, *mp3_md5, *md5_ptr, *md5_hex, post_data[2048];
     p_response req_result;
     json_t *value;
     int i, filesize;
@@ -124,57 +124,48 @@ void listdir(const char *name, int level, int parent_id, char** headers)
 
     do {
         char path[1024];
-        // printf("entry: %s type: %d\n", entry->d_name, entry->d_type);
         snprintf(path, sizeof(path), "%s/%s", name, entry->d_name);
+
+        // IS DIRECTORY
         if (entry->d_type == DT_DIR) {
             if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)
                 continue;
             printf("%*s[%s]\n", level*2, "", entry->d_name);
-            // printf("DIR %s\n", entry->d_name);
             sprintf(post_data, "parent_id=%d&type=D&name=%s", parent_id, entry->d_name);
-            // printf("DIR %s post_data %s\n", entry->d_name, post_data);
             req_result = send_request("192.168.1.71", 8000, "POST", "/files", post_data, headers);
-            // printf("response obj ptr, JSON body ptr: %p %p\n", req_result, req_result->json_body);
             value = json_object_get(req_result->json_body, "id");
 
-            // printf("GOT ID %lld\n", json_integer_value(value) );
-            // json_decref(req_result->json_body);
-            // printf("HEADER DUMP for Set-Cookie => [%s]\n", get_header(req_result, "Set-Cookie"));
-            // printf("HEADER DUMP for Content-Type => [%s]\n", get_header(req_result, "Content-Type"));
             free_response(req_result);
             listdir(path, level + 1, parent_id, headers);
         }
+        // IS REGULAR FILE
         else {
+
+            // IGNORE SMALL FILES
             stat(path, &st);
             filesize = st.st_size;
             if(filesize < FILE_MIN) {
-                // printf( "%s filesize %d < %d, skip\n", path, filesize, FILE_MIN );
                 continue;
             }
 
-            int entry_len = strlen(entry->d_name);
+            md5 = run_md5(path);
+            sprintf(post_data, "parent_id=%d&type=F&name=%s&md5=%s", parent_id, entry->d_name, md5);
 
-            if (strcmp(entry->d_name + entry_len - 4 , ".mp3") != 0) {
-                
-                md5 = run_md5(path);
-                // printf("run md5 on entry: %s type: %d  => md5: %s\n", entry->d_name, entry->d_type, md5);
-                sprintf(post_data, "parent_id=%d&type=F&name=%s&md5=%s", parent_id, entry->d_name, md5);
-                // printf("post_data %s\n", post_data);
-                // printf("REG %s\n", entry->d_name);
-                req_result = send_request("192.168.1.71", 8000, "POST", "/files", post_data, headers);
-                free(md5);
-                free_response(req_result);
-            }
-            else {
-                md5 = mp3_checksum(path);
-                sprintf(post_data, "parent_id=%d&type=F&name=%s&md5=", parent_id, entry->d_name);
+            // For mp3 files, add md5 sum of audio part, stripped of ID3v* tags
+            int entry_len = strlen(entry->d_name);
+            if (strcmp(entry->d_name + entry_len - 4 , ".mp3") == 0) {
+                mp3_md5 = mp3_checksum(path);
+                strcat(post_data, "&mp3_md5=");
                 for(i=0; i<16;i++){
-                    sprintf(post_data + strlen(post_data), "%02x", md5[i]);
+                    sprintf(post_data + strlen(post_data), "%02x", mp3_md5[i]);
                 }
-                req_result = send_request("192.168.1.71", 8000, "POST", "/files", post_data, headers);
-                free(md5);
-                free_response(req_result);
             }
+
+            // fire request
+            req_result = send_request("192.168.1.71", 8000, "POST", "/files", post_data, headers);
+            free(md5);
+            free_response(req_result);
+
             printf("%*s- %s\n", level*2, "", entry->d_name);
         }
     } while ((entry = readdir(dir)));

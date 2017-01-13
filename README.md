@@ -1,4 +1,5 @@
 # backup-tool
+
 A tool for this: https://benoithubert.net/indexer-manuellement-ses-fichiers-sur-un-nas-synology/
 
 ## License
@@ -13,3 +14,18 @@ first commits).
 * mloydm for providing [this code on SO](http://stackoverflow.com/questions/8436841/how-to-recursively-list-directories-in-c-on-linux)
 * Graham Poulter for providing [this code](http://snipplr.com/view/4025/mp3-checksum-in-id3-tag/) that I translated into C
 * Jerry Jeremiah for his comprehensive answer to [this SO question](http://stackoverflow.com/questions/22077802/simple-c-example-of-doing-an-http-post-and-consuming-the-response)
+
+## Todo
+
+* Don't add if same md5 in same dir (in same volume, but since each dir id is different anyway...)
+  * Detect moved files (in the future)
+* First scan the whole tree so as to know how many files are to be processed
+* Detect duplicates
+* "touch" files that already existed
+* Create a "session" when the client launches, finish it at the end (then check not created files)
+* URL-ENCODE AMPERSANDS (&) in file names!!
+
+## Done
+
+* Generate full md5 anyway in addition to audio hash for mp3 files
+* Change response from server: add success flag in all cases, put output file in "file" obj for example
