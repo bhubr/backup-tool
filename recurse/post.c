@@ -7,6 +7,7 @@
 #include <netinet/in.h> /* struct sockaddr_in, struct sockaddr */
 #include <netdb.h> /* struct hostent, gethostbyname */
 // #include <jansson.h>
+#include "utils.h"
 #include "post.h"
 
 #define BUF_SIZE 8192
@@ -45,22 +46,25 @@ p_response send_request(char *host, int portno, char *method, char *path, char *
     char *header;
     char *message, *response = NULL, *response_ptr;
     char *eol;
-    int i = 0;
+    int i = 0, j;
     int header_len;
     char **response_headers;
-    char status_code[4];
+    char status_code[5];
     p_response response_obj = NULL;
     struct response_wrapper re;
-    // for(int j = 0; j < 2 ; j++) {
-    //     if(headers[j] == NULL) continue;
-    //     printf("header %d  => %s (ptr: %p)\n", j, headers[j], headers[j]);
-    // }
-    // if(headers[1] != NULL) print_hex(headers[1]);
+    for(j = 0; j < 2 ; j++) {
+        if(headers[j] == 0) continue;
+        printf("header %d  => %s (ptr: %p)\n", j, headers[j], headers[j]);
+    }
+    if(headers[1] != 0) print_hex((unsigned char *)headers[1]);
 
     response = malloc(BUF_SIZE);
     response_obj = malloc(sizeof(re));
 
     printf("post data: %s\n", data);
+    // if(headers[1] != 0) {
+    //     printf("#1 "); print_hex(headers[1]);
+    // }
 
     /* How big is the message? */
     message_size=0;
@@ -101,6 +105,9 @@ p_response send_request(char *host, int portno, char *method, char *path, char *
 
     /* allocate space for the message */
     message=malloc(message_size);
+    // if(headers[1] != 0) {
+    //     printf("#2 "); print_hex(headers[1]);
+    // }
 
     /* fill in the parameters */
     if(!strcmp(method,"GET"))
@@ -199,20 +206,33 @@ p_response send_request(char *host, int portno, char *method, char *path, char *
     close(sockfd);
     free(message);
 
+    // if(headers[1] != 0) {
+    //     printf("#3a "); print_hex(headers[1]);
+    // }
+
+
     response_headers = malloc(50 * sizeof(char *));
     response_ptr = response;
+    // if(headers[1] != 0) {
+    //     printf("#3b %p => ", headers[1]); print_hex(headers[1]);
+    // }
 
     i = 0;
+    print_hex(response_ptr);
     do {
-        eol = strchr(response_ptr, '\n');
+        eol = strchr(response_ptr, '\r');
         header_len = eol - response_ptr;
         if(header_len <= 1) break;
-        response_headers[i] = malloc(header_len);
-        memcpy(response_headers[i], response_ptr, header_len-1  );
+        response_headers[i] = malloc(header_len + 1);
+        memcpy(response_headers[i], response_ptr, header_len );
         response_headers[i][header_len] = 0;
+        // printf("#%d len: %d %s %p %s\n", i, header_len, response_headers[i], response_headers[i], headers[1]);
         i++;
-        response_ptr = eol + 1;
+        response_ptr = eol + 2;
     } while(true);
+    // if(headers[1] != 0) {
+    //     printf("#4a %p => ", headers[1]); print_hex(headers[1]);
+    // }
     response_headers[i] = 0;
 
     response_ptr = response;
@@ -220,10 +240,15 @@ p_response send_request(char *host, int portno, char *method, char *path, char *
 
     snprintf(status_code, 4, "%s", response_headers[0] + 9);
     response_obj->status_code = atoi(status_code);
-    printf("status txt: %s, int: %d\n", status_code, response_obj->status_code);
+    printf("status txt: %s, int: %d, hex: ", status_code, response_obj->status_code);
+    print_hex(status_code);
     response_obj->raw_body = response;
     response_obj->headers = response_headers;
     response_obj->json_body = parse_body_json(response_ptr);
+    // if(headers[1] != 0) {
+    //     printf("#4b "); print_hex(headers[1]);
+    // }
+
     if(response_obj->status_code != 200) {
         json_t *error_j = json_object_get(response_obj->json_body, "error");
         printf("\n#######\n# Encountered error (status %d): %s\n#######\n", response_obj->status_code, json_string_value(error_j));
@@ -233,5 +258,8 @@ p_response send_request(char *host, int portno, char *method, char *path, char *
     else {
         json_t *id_j = json_object_get(response_obj->json_body, "id");
     }
+    // if(headers[1] != 0) {
+    //     printf("#5 "); print_hex(headers[1]);
+    // }
     return response_obj;
 }

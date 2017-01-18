@@ -130,6 +130,7 @@ void listdir(const char *name, int level, int parent_id, char** headers)
             printf("---- dir %s has id %d ----\n\n", name, new_parent_id);
 
             free_response(req_result);
+            // printf("cookie after D [%s]\n", headers[1]);
             listdir(path, level + 1, new_parent_id, headers);
         }
         // IS REGULAR FILE
@@ -159,7 +160,7 @@ void listdir(const char *name, int level, int parent_id, char** headers)
             req_result = send_request("192.168.1.71", 8000, "POST", "/files", post_data, headers);
             free(md5);
             free_response(req_result);
-
+            // printf("cookie after F [%s]\n", headers[1]);
             printf("%*s- %s\n", level*2, "", entry->d_name);
         }
     } while ((entry = readdir(dir)));
