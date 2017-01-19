@@ -10,9 +10,13 @@
 #include "../mp3/mp3_checksum.h"
 #include "post.h"
 #include "run_md5.h"
+#include "utils.h"
 
 #define FILE_MIN 1048576
 
+int num_opened = 0;
+int num_files = 0;
+const char *accepted_exts[] = {"mp3","m4a","flac"};
 
 /**
  * Free a response object
@@ -85,24 +89,43 @@ int init_session(char* email, char* password, char *mount_point, char** headers)
     return 0;
 }
 
-void listdir(const char *name, int level, int parent_id, char** headers)
+DIR * _opendir(const char * dir) {
+    DIR *fp = opendir(dir);
+    printf("### OPEN %d  %s => %p\n", num_opened++, dir, fp);
+    return fp;
+}
+
+void _closedir(DIR *fp) {
+    printf("### CLOSE %d => %p\n", --num_opened, fp);
+    closedir(fp);
+}
+
+void process_files(const char *name, int level, int parent_id, char** headers)
 {
     DIR *dir;
     struct dirent *entry;
     unsigned char *md5, *mp3_md5, *md5_ptr, *md5_hex, post_data[2048];
     p_response req_result;
     json_t *file_j, *id_j;
-    int i, filesize;
+    int i = 0, filesize;
     char *cookie_value, *set_cookie;
     struct stat st;
     int new_parent_id;
 
-    if (!(dir = opendir(name)))
-        return;
-    if (!(entry = readdir(dir)))
-        return;
+    // while(true) {
+    //     DIR *fp = opendir(name);
+    //     if (!fp) exit(-1);
+    //     printf("%d => %p\n", i++, fp);
+    // }
 
-    if( level == 0) {
+    if (!(dir = _opendir(name)))
+        return;
+    if (!(entry = readdir(dir))) {
+        _closedir(dir);
+        return;
+    }
+
+    if( level == 0 ) {
         sprintf(post_data, "parent_id=%d&type=D&name=%s", parent_id, (unsigned char*)name);
         // printf("ROOT %s\n", name);
         req_result = send_request("192.168.1.71", 8000, "POST", "/files", post_data, headers);
@@ -131,7 +154,7 @@ void listdir(const char *name, int level, int parent_id, char** headers)
 
             free_response(req_result);
             // printf("cookie after D [%s]\n", headers[1]);
-            listdir(path, level + 1, new_parent_id, headers);
+            process_files(path, level + 1, new_parent_id, headers);
         }
         // IS REGULAR FILE
         else {
@@ -164,6 +187,41 @@ void listdir(const char *name, int level, int parent_id, char** headers)
             printf("%*s- %s\n", level*2, "", entry->d_name);
         }
     } while ((entry = readdir(dir)));
+    _closedir(dir);
+}
+
+void list_dirs(const char *name, int level)
+{
+    DIR *dir;
+    struct dirent *entry;
+    char *ext;
+
+
+    if (!(dir = opendir(name)))
+        return;
+    if (!(entry = readdir(dir))){
+        closedir(dir);
+        return;
+    }
+
+    do {
+        if (entry->d_type == DT_DIR) {
+            char path[1024];
+            int len = snprintf(path, sizeof(path)-1, "%s/%s", name, entry->d_name);
+            path[len] = 0;
+            if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)
+                continue;
+            printf("      %*s[%s]\n", level*2, "", entry->d_name);
+            list_dirs(path, level + 1);
+        }
+        else {
+            ext = get_filename_ext( entry->d_name );
+            if( search_array( accepted_exts, ext, 3 ) != -1 ) {
+                num_files++;
+                printf("%5d %*s- %s\n", num_files, level*2, "", entry->d_name);
+            } 
+        }
+    } while ((entry = readdir(dir)));
     closedir(dir);
 }
 
@@ -181,12 +239,13 @@ int main(int argc, char **argv)
     headers[1] = 0;
 
     if(argc < 5) {
-        printf("Not enough arguments:\n  listdir <dir> <email> <pass> <mount point>");
+        printf("Not enough arguments:\n  process_files <dir> <email> <pass> <mount point>");
         exit(-1);
     }
     init_session(argv[2], argv[3], argv[4], headers);
 
-    listdir(argv[1], 0, 0, headers);
+    list_dirs(argv[1], 0);
+    process_files(argv[1], 0, 0, headers);
     free(headers[0]);
     free(headers[1]);
     return 0;

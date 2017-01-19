@@ -52,16 +52,16 @@ p_response send_request(char *host, int portno, char *method, char *path, char *
     char status_code[5];
     p_response response_obj = NULL;
     struct response_wrapper re;
-    for(j = 0; j < 2 ; j++) {
-        if(headers[j] == 0) continue;
-        printf("header %d  => %s (ptr: %p)\n", j, headers[j], headers[j]);
-    }
-    if(headers[1] != 0) print_hex((unsigned char *)headers[1]);
+    // for(j = 0; j < 2 ; j++) {
+    //     if(headers[j] == 0) continue;
+    //     printf("header %d  => %s (ptr: %p)\n", j, headers[j], headers[j]);
+    // }
+    // if(headers[1] != 0) print_hex((unsigned char *)headers[1]);
 
     response = malloc(BUF_SIZE);
     response_obj = malloc(sizeof(re));
 
-    printf("post data: %s\n", data);
+    // printf("post data: %s\n", data);
     // if(headers[1] != 0) {
     //     printf("#1 "); print_hex(headers[1]);
     // }
@@ -101,7 +101,7 @@ p_response send_request(char *host, int portno, char *method, char *path, char *
         if( data != NULL)
             message_size+=strlen(data);                          /* body           */
     }
-    printf("message size: %d\n", message_size);
+    // printf("message size: %d\n", message_size);
 
     /* allocate space for the message */
     message=malloc(message_size);
@@ -152,7 +152,7 @@ p_response send_request(char *host, int portno, char *method, char *path, char *
     }
 
     /* What are we going to send? */
-    printf("Request: %s\n", message);
+    // printf("Request: %s\n", message);
 
     /* create the socket */
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
@@ -218,7 +218,7 @@ p_response send_request(char *host, int portno, char *method, char *path, char *
     // }
 
     i = 0;
-    print_hex(response_ptr);
+    // print_hex(response_ptr);
     do {
         eol = strchr(response_ptr, '\r');
         header_len = eol - response_ptr;
@@ -240,8 +240,8 @@ p_response send_request(char *host, int portno, char *method, char *path, char *
 
     snprintf(status_code, 4, "%s", response_headers[0] + 9);
     response_obj->status_code = atoi(status_code);
-    printf("status txt: %s, int: %d, hex: ", status_code, response_obj->status_code);
-    print_hex(status_code);
+    // printf("status txt: %s, int: %d, hex: ", status_code, response_obj->status_code);
+    // print_hex(status_code);
     response_obj->raw_body = response;
     response_obj->headers = response_headers;
     response_obj->json_body = parse_body_json(response_ptr);
