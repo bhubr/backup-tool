@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+  <style>
+    body {
+      margin: 0;
+    }
+    .container {
+      max-width: 600px;
+      margin: 2em auto;
+    }
+    .progress-bar {
+      /* position: relative; */
+      height:1em;
+      background: #ccc;
+    }
+    .progress-bar-inner {
+      /* position: absolute; */
+      background: #99f;
+      display: inline-block;
+      height: 1em;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div id="progress" class="progress-bar">
+      <scan id="progress-value" class="progress-bar-inner" style="width: 0%;"></scan>
+    </div>
+
+    <div id="pc"></div>
+  </div>
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    var socket = io();
+    socket.on('percent', function(msg) {
+      const { percent } = JSON.parse(msg);
+      document.querySelector('#pc').innerText = `${percent}%`;
+      document.querySelector('#progress-value').style.width = `${percent}%`;
+    });
+  </script>
+</body>
+</html>
