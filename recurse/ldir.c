@@ -111,7 +111,7 @@ void list_dirs_files(const char *name, int level, int *num_per_level, void (*cb)
                 continue;
             }
             num_dirs++;
-            num_per_level[level]++;
+            // num_per_level[level]++;
             // if (level< 2) printf("nd: %d, nf: %d\n", num_dirs, num_files);
             // if (level < 4) printf("      %*s[%s] %s (%d)\n", level*2, "", entry->d_name, path, level);
 
@@ -121,14 +121,14 @@ void list_dirs_files(const char *name, int level, int *num_per_level, void (*cb)
 
             list_dirs_files(path, level + 1, num_per_level, cb, num_at_1, "", max_level);
         }
-        // else {
-        //     ext = get_filename_ext( entry->d_name );
-        //     // if( search_array( accepted_exts, ext, 3 ) ) {
-        //     num_files++;
-        //     // if (!(num_files % 10000)) printf("nf: %d\n", num_files);
-        //     // printf("%5d %*s- %s\n", num_files, level*2, "", entry->d_name);
-        //     // }
-        // }
+        else {
+            ext = get_filename_ext( entry->d_name );
+            // if( search_array( accepted_exts, ext, 3 ) ) {
+            num_files++;
+            // if (!(num_files % 10000)) printf("nf: %d\n", num_files);
+            // printf("%5d %*s- %s\n", num_files, level*2, "", entry->d_name);
+            // }
+        }
     } while ((entry = readdir(dir)));
     // cb(level, num_at_1, num_per_level[1]);
     // if (level < 3) free(dir_name);
