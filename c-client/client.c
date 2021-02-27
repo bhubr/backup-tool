@@ -19,6 +19,7 @@ int num_files = 0;
 int num_dirs = 0;
 const char *accepted_exts[] = {"mp3","m4a","flac"};
 const char *ignored[] = {"node_modules", ".pnpm", "AppData"};
+char *choosen_drive_id;
 json_t *all_files;
 
 struct curl_slist *prepare_headers(char *content_length)
@@ -48,7 +49,7 @@ int search_array(const char **arr, char *str, int len) {
 
 // added count of dirs per level
 // now handle callback
-void list_dirs(const char *name, int level, int *num_per_level, void (*cb)(int, int, int), int num_at_1, int max_level)
+void list_dirs(const char *name, int level, int *num_per_level, void (*cb)(int, int, int, char *), int num_at_1, int max_level)
 {
     DIR *dir;
     struct dirent *entry;
@@ -79,7 +80,7 @@ void list_dirs(const char *name, int level, int *num_per_level, void (*cb)(int, 
             list_dirs(path, level + 1, num_per_level, cb, num_at_1, max_level);
         }
     } while ((entry = readdir(dir)));
-    cb(level, num_at_1, num_per_level[1]);
+    cb(level, num_at_1, num_per_level[1], "estimate");
     closedir(dir);
 }
 
@@ -95,7 +96,7 @@ int get_file_size(char *path) {
 
 // added count of dirs per level
 // now handle callback
-void list_dirs_files(const char *name, int level, int *num_per_level, void (*cb)(int, int, int), int num_at_2, char *parent_name, int max_level)
+void list_dirs_files(const char *name, int level, int *num_per_level, void (*cb)(int, int, int, char *), int num_at_2, char *parent_name, int max_level)
 {
     DIR *dir;
     struct dirent *entry;
@@ -155,7 +156,7 @@ void list_dirs_files(const char *name, int level, int *num_per_level, void (*cb)
             // }
         }
     } while ((entry = readdir(dir)));
-    cb(level, num_at_2, num_per_level[2]);
+    cb(level, num_at_2, num_per_level[2], "scan");
     // if (level < 3) free(dir_name);
     closedir(dir);
 }
@@ -217,30 +218,52 @@ void send_request(char * endpoint, char * payload) {
 	free(content_length);
 }
 
-void send_percent_request(int percent) {
-
+void send_percent_request(int percent, char *phase) {
     printf("send_percent\n");
     char *payload;
     payload = malloc(100);
 
-    sprintf(payload, "{\"percent\": %.1f}\n\n\n", percent / 10.0);
+    sprintf(payload, "{\"id\": \"%s\", \"phase\": \"%s\", \"percent\": %.1f}\n\n\n", choosen_drive_id, phase, percent / 10.0);
 
     send_request("/scan-pc", payload);
     free(payload);
 }
 
-void fun(int a, int b, int c) {
+void send_scan_start_request(char *id, char *label, time_t timestamp) {
+    json_t *data = json_object();
+    json_t *val;
+    char *payload;
+
+    val = json_string(id);
+    json_object_set(data, "id", val);
+    json_decref(val);
+
+    val = json_string(label);
+    json_object_set(data, "label", val);
+    json_decref(val);
+
+    val = json_integer(timestamp);
+    json_object_set(data, "timestamp", val);
+    json_decref(val);
+
+    payload = json_dumps(data, 0);
+    send_request("/scan-start", payload);
+    free(payload);
+    json_decref(data);
+}
+
+void fun(int a, int b, int c, char *phase) {
 //    printf("Fun %d %d\n\n", a, b);
 }
 
-void fun2(int level, int b, int c) {
+void fun2(int level, int b, int c, char *phase) {
 //    printf("CB %d %d %d\n", level, b, c);
     // float pc = (float) ((c * 100.0f) / b);
     int pc = c * 1000 / b;
 
     if (level == 2) {
         printf("%.1f\n", pc / 10.0);
-        send_percent_request(pc);
+        send_percent_request(pc, phase);
     }
 }
 
@@ -261,7 +284,6 @@ int main(int argc, char **argv)
     char *json_files;
     json_t *drives;
     int drives_count;
-    char *choosen_drive_id;
     char *path = NULL;
     char *label = NULL;
 
@@ -295,6 +317,7 @@ int main(int argc, char **argv)
 
     // start counting time
     start = time(NULL);
+    send_scan_start_request(choosen_drive_id, label, start);
 
     // get numbers of dirs at level 1
     reset_npl(num_per_level1);

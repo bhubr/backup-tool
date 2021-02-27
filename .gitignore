@@ -1,3 +1,5 @@
 *.o
 c-client/client
 c-client/settings.json
+express-server/.cache/
+express-server/dist/

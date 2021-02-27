@@ -25,10 +25,19 @@
       height: 1em;
     }
   </style>
-  <link rel="icon" href="/favicon.ico?v=2" />
+  <link rel="icon" href="assets/favicon.ico" />
 </head>
 <body>
   <div class="container">
+    <h3>Scans</h3>
+    <ul id="scans">
+    </ul>
+
+    <h3>Current</h3>
+    <ul>
+      <li>Scan id: <span id="current-id">N/A</span></li>
+      <li>Phase: <span id="current-phase">N/A</span></li>
+    </ul>
     <div id="progress" class="progress-bar">
       <scan id="progress-value" class="progress-bar-inner" style="width: 0%;"></scan>
     </div>
@@ -41,28 +50,6 @@
     <ul id="files">
     </ul>
   </div>
-  <script src="/socket.io/socket.io.js"></script>
-  <script>
-    var socket = io();
-    let ts1;
-    let ts2;
-    socket.on('percent', function(msg) {
-      const { percent } = JSON.parse(msg);
-      console.log(msg);
-      if (!ts1) ts1 = Date.now();
-      ts2 = Date.now();
-      document.querySelector('#pc').innerText = `${percent}%`;
-      document.querySelector('#progress-value').style.width = `${percent}%`;
-      document.querySelector('#time').innerText = `(${((ts2 - ts1) / 1000).toFixed(1)} seconds)`;
-    });
-    socket.on('files', function(msg) {
-      const files = JSON.parse(msg);
-      files.forEach(f => {
-        const li = document.createElement('LI');
-        li.innerText = f;
-        document.querySelector('#files').appendChild(li);
-      })
-    });
-  </script>
+  <script src="main.js"></script>
 </body>
 </html>
