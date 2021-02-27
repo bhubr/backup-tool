@@ -20,3 +20,6 @@ utils.o: utils.c utils.h
 
 clean:
 	rm *.o listdir
+
+ldir : ldir.c
+	gcc -o ldir ldir.c
