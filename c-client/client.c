@@ -10,6 +10,8 @@
 #include <time.h> // http://www.cplusplus.com/reference/ctime/difftime/
 #include <unistd.h>
 
+#include "file_utils.h"
+
 #define FILE_MIN 1048576
 
 int num_opened = 0;
@@ -97,7 +99,7 @@ void list_dirs_files(const char *name, int level, int *num_per_level, void (*cb)
 {
     DIR *dir;
     struct dirent *entry;
-    char *ext;
+    // char *ext;
     char path[1024];
     int len;
     json_t *json_str;
@@ -144,7 +146,7 @@ void list_dirs_files(const char *name, int level, int *num_per_level, void (*cb)
             list_dirs_files(path, level + 1, num_per_level, cb, num_at_2, "", max_level);
         }
         else {
-            ext = get_filename_ext( entry->d_name );
+            // ext = get_filename_ext( entry->d_name );
             // if( search_array( accepted_exts, ext, 3 ) ) {
             num_files++;
             // get_file_size(path);
@@ -158,37 +160,6 @@ void list_dirs_files(const char *name, int level, int *num_per_level, void (*cb)
     closedir(dir);
 }
 
-
-void fun(int a, int b, int c) {
-//    printf("Fun %d %d\n\n", a, b);
-}
-
-void fun2(int level, int b, int c) {
-//    printf("CB %d %d %d\n", level, b, c);
-    // float pc = (float) ((c * 100.0f) / b);
-    int pc = c * 1000 / b;
-
-    if (level == 2) {
-        printf("%.1f\n", pc / 10.0);
-        send_percent_request(pc);
-    }
-}
-
-void reset_npl(int *num_per_levels) {
-    memset(num_per_levels, 0, 512 * sizeof(int));
-}
-
-void send_percent_request(int percent) {
-
-    printf("send_percent\n");
-    char *payload;
-    payload = malloc(100);
-
-    sprintf(payload, "{\"percent\": %.1f}\n\n\n", percent / 10.0);
-
-    send_request("/scan-pc", payload);
-    free(payload);
-}
 
 // https://stackoverflow.com/questions/22367580/libcurl-how-to-stop-output-to-command-line-in-c
 void send_request(char * endpoint, char * payload) {
@@ -213,7 +184,7 @@ void send_request(char * endpoint, char * payload) {
 	if (!curl)
 	{
 		printf("Could not init cURL, aborting!\n");
-		return 1;
+		return;
 	}
 
 	sprintf(content_length_val, "%ld", strlen(payload));
@@ -246,6 +217,37 @@ void send_request(char * endpoint, char * payload) {
 	free(content_length);
 }
 
+void send_percent_request(int percent) {
+
+    printf("send_percent\n");
+    char *payload;
+    payload = malloc(100);
+
+    sprintf(payload, "{\"percent\": %.1f}\n\n\n", percent / 10.0);
+
+    send_request("/scan-pc", payload);
+    free(payload);
+}
+
+void fun(int a, int b, int c) {
+//    printf("Fun %d %d\n\n", a, b);
+}
+
+void fun2(int level, int b, int c) {
+//    printf("CB %d %d %d\n", level, b, c);
+    // float pc = (float) ((c * 100.0f) / b);
+    int pc = c * 1000 / b;
+
+    if (level == 2) {
+        printf("%.1f\n", pc / 10.0);
+        send_percent_request(pc);
+    }
+}
+
+void reset_npl(int *num_per_levels) {
+    memset(num_per_levels, 0, 512 * sizeof(int));
+}
+
 int main(int argc, char **argv)
 {
     time_t start;
@@ -257,24 +259,52 @@ int main(int argc, char **argv)
     int num_at_1;
     int num_at_2;
     char *json_files;
+    json_t *drives;
+    int drives_count;
+    char *choosen_drive_id;
+    char *path = NULL;
+    char *label = NULL;
 
     if(argc < 2) {
-        printf("Not enough arguments:\n  ldir <dir>\n\n");
+        printf("Not enough arguments - Usage:\n  ./client <drive id>\n\n");
         exit(-1);
     }
+
+    choosen_drive_id = argv[1];
+    drives = read_config_file();
+    drives_count = json_array_size(drives);
+
+    for (int i = 0; i < drives_count; i++) {
+        json_t *drive_config = json_array_get(drives, i);
+        json_t *drive_id = json_object_get(drive_config, "id");
+        json_t *drive_path = json_object_get(drive_config, "path");
+        json_t *drive_label = json_object_get(drive_config, "label");
+        const char *id = json_string_value(drive_id);
+        if (!(strcmp(choosen_drive_id, id))) {
+            path = (char *)json_string_value(drive_path);
+            label = (char *)json_string_value(drive_label);
+        }
+    }
+
+    if (!path || !label) {
+        printf("Could not find config with id '%s'\n", choosen_drive_id);
+        exit(1);
+    }
+
+    printf("Loaded config (id: %s, path: %s, label: %s)\n", choosen_drive_id, path, label);
 
     // start counting time
     start = time(NULL);
 
     // get numbers of dirs at level 1
     reset_npl(num_per_level1);
-    list_dirs(argv[1], 0, num_per_level1, &fun, 0, 2);
+    list_dirs(path, 0, num_per_level1, &fun, 0, 2);
     num_at_1 = num_per_level1[1];
     end = time(NULL);
 
     // recurse one level deeper
     reset_npl(num_per_level1);
-    list_dirs(argv[1], 0, num_per_level1, &fun2, num_at_1, 3);
+    list_dirs(path, 0, num_per_level1, &fun2, num_at_1, 3);
     num_at_2 = num_per_level1[2];
 
     // no limit, scan dirs & files
@@ -283,7 +313,7 @@ int main(int argc, char **argv)
     all_files = json_array();
 
     reset_npl(num_per_level2);
-    list_dirs_files(argv[1], 0, num_per_level2, &fun2, num_at_2, "", -1);
+    list_dirs_files(path, 0, num_per_level2, &fun2, num_at_2, "", -1);
     end = time(NULL);
 
     seconds = difftime(end, start);
@@ -295,7 +325,7 @@ int main(int argc, char **argv)
 
     printf("building and sending files\n");
     json_files = json_dumps(all_files, 0);
-    printf("json payload size: %d\n", strlen(json_files));
+    printf("json payload size: %ld\n", strlen(json_files));
     send_request("/files", json_files);
     free(json_files);
 

@@ -100,10 +100,10 @@ With:
 C client
 
 * c01 [x] send array of files as JSON. 6:07pm
+* c02 [x] config file (basic)
 * [ ] sort files by types
 * [ ] handle duplicates by name (size is too slow)
 * [ ] handle multiple hosts & drives & per-drive settings
-* [ ] more fine-grained progress bar
 
 Node server
 
@@ -112,11 +112,19 @@ Node server
 Web UI
 
 * [ ] reset time counter for each run
+* [ ] treemaps
 
 All
 
 * [ ] make a tree of the file list
 
+Won't do
+
+* [ ] more fine-grained progress bar
+* [ ]
+
 ### Time
 
 * c01 + s01 = 1:05
+* wandering & procrastinating = 3:15
+* c02 = 0:30

@@ -1,5 +1,14 @@
-CFLAGS=-Wall
+CFLAGS=-I. -Wall
 LDFLAGS=-lcurl -ljansson
 
-client : client.c
-	gcc -o client client.c $(CFLAGS) $(LDFLAGS)
+clean :
+	rm client client.o file_utils.o
+
+client : client.o file_utils.o
+	gcc -o client client.o file_utils.o $(CFLAGS) $(LDFLAGS)
+
+client.o : client.c
+	gcc -c -o client.o client.c $(CFLAGS)
+
+file_utils.o : file_utils.c
+	gcc -c -o file_utils.o file_utils.c $(CFLAGS)

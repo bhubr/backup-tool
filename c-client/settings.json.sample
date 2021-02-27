@@ -1,0 +1,7 @@
+[
+  {
+    "id": "someid",
+    "path": "/path/to/scan",
+    "label": "Path label"
+  }
+]
