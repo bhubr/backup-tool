@@ -1,4 +1,4 @@
-CFLAGS=
+CFLAGS=-Wall
 # -da -Q
 
 all: build
@@ -22,4 +22,4 @@ clean:
 	rm *.o listdir
 
 ldir : ldir.c
-	gcc -o ldir ldir.c
+	gcc -o ldir ldir.c $(CFLAGS)

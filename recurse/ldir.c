@@ -30,7 +30,7 @@ int search_array(const char **arr, char *str, int len) {
     return 0;
 }
 
-void list_dirs(const char *name, int level, int max_level)
+void list_dirs(const char *name, int level, int *num_per_level, int max_level)
 {
     DIR *dir;
     struct dirent *entry;
@@ -53,8 +53,9 @@ void list_dirs(const char *name, int level, int max_level)
             if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)
                 continue;
             num_dirs++;
+            num_per_level[level]++;
             // printf("      %*s[%s]\n", level*2, "", entry->d_name);
-            list_dirs(path, level + 1, max_level);
+            list_dirs(path, level + 1, num_per_level, max_level);
         }
         else {
             ext = get_filename_ext( entry->d_name );
@@ -72,6 +73,11 @@ int main(int argc, char **argv)
     time_t start;
     time_t end;
     double seconds;
+    int MAX = 2;
+    int *num_per_level;
+
+    num_per_level = malloc(MAX);
+    for (int i = 0; i < MAX; i++) num_per_level[0] = 0;
 
     if(argc < 2) {
         printf("Not enough arguments:\n  ldir <dir>\n\n");
@@ -79,13 +85,16 @@ int main(int argc, char **argv)
     }
 
     start = time(NULL);
-    list_dirs(argv[1], 0, 2);
+    list_dirs(argv[1], 0, num_per_level, 2);
     end = time(NULL);
 
     seconds = difftime(end, start);
     printf("%d dirs scanned\n", num_dirs);
+    for (int i = 0; i < MAX; i++) printf("\t%2d: %d\n", i, num_per_level[i]);
     printf("%d files found\n", num_files);
     printf("%f seconds elapsed\n", seconds);
+
+    free(num_per_level);
     return 0;
 }
 
