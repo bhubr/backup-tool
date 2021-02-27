@@ -30,7 +30,9 @@ int search_array(const char **arr, char *str, int len) {
     return 0;
 }
 
-void list_dirs(const char *name, int level, int *num_per_level, int max_level)
+// added count of dirs per level
+// now handle callback
+void list_dirs(const char *name, int level, int *num_per_level, void (*cb)(int, int), int max_level)
 {
     DIR *dir;
     struct dirent *entry;
@@ -54,8 +56,9 @@ void list_dirs(const char *name, int level, int *num_per_level, int max_level)
                 continue;
             num_dirs++;
             num_per_level[level]++;
-            // printf("      %*s[%s]\n", level*2, "", entry->d_name);
-            list_dirs(path, level + 1, num_per_level, max_level);
+            printf("      %*s[%s]\n", level*2, "", entry->d_name);
+
+            list_dirs(path, level + 1, num_per_level, cb, max_level);
         }
         else {
             ext = get_filename_ext( entry->d_name );
@@ -65,15 +68,18 @@ void list_dirs(const char *name, int level, int *num_per_level, int max_level)
             // }
         }
     } while ((entry = readdir(dir)));
+    cb(level, num_dirs);
     closedir(dir);
 }
+
+void fun(int a, int b) { printf("Fun %d %d\n\n", a, b); }
 
 int main(int argc, char **argv)
 {
     time_t start;
     time_t end;
     double seconds;
-    int MAX = 2;
+    int MAX = 3;
     int *num_per_level;
 
     num_per_level = malloc(MAX);
@@ -85,7 +91,7 @@ int main(int argc, char **argv)
     }
 
     start = time(NULL);
-    list_dirs(argv[1], 0, num_per_level, 2);
+    list_dirs(argv[1], 0, num_per_level, &fun, MAX);
     end = time(NULL);
 
     seconds = difftime(end, start);
