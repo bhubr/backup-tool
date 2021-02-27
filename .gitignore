@@ -1,2 +1,2 @@
 *.o
-recurse/ldir
+c-client/client
