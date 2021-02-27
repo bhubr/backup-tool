@@ -1,5 +1,5 @@
 CFLAGS=-Wall
-LDFLAGS=-lcurl
+LDFLAGS=-lcurl -ljansson
 # -da -Q
 
 all: build

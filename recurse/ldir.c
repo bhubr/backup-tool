@@ -1,5 +1,6 @@
 #include <curl/curl.h>
 #include <dirent.h>
+#include <jansson.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -16,6 +17,7 @@ int num_files = 0;
 int num_dirs = 0;
 const char *accepted_exts[] = {"mp3","m4a","flac"};
 const char *ignored[] = {"node_modules", ".pnpm", "AppData"};
+json_t *all_files;
 
 struct curl_slist *prepare_headers(char *content_length)
 {
@@ -65,6 +67,11 @@ void list_dirs(const char *name, int level, int *num_per_level, void (*cb)(int, 
             path[len] = 0;
             if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)
                 continue;
+
+            if (search_array(ignored, entry->d_name, 3)) {
+                printf("Ignoring %s\n", path);
+                continue;
+            }
             num_dirs++;
             num_per_level[level]++;
             list_dirs(path, level + 1, num_per_level, cb, num_at_1, max_level);
@@ -74,13 +81,26 @@ void list_dirs(const char *name, int level, int *num_per_level, void (*cb)(int, 
     closedir(dir);
 }
 
+int get_file_size(char *path) {
+    FILE *fd = fopen(path, "rb");
+	int file_len;
+
+	fseek(fd, 0, SEEK_END);
+	file_len = ftell(fd);
+    fclose(fd);
+    return file_len;
+}
+
 // added count of dirs per level
 // now handle callback
-void list_dirs_files(const char *name, int level, int *num_per_level, void (*cb)(int, int, int), int num_at_1, char *parent_name, int max_level)
+void list_dirs_files(const char *name, int level, int *num_per_level, void (*cb)(int, int, int), int num_at_2, char *parent_name, int max_level)
 {
     DIR *dir;
     struct dirent *entry;
     char *ext;
+    char path[1024];
+    int len;
+    json_t *json_str;
     // char *dir_name;
 
     // if (level < 3) dir_name = malloc(512);
@@ -95,13 +115,15 @@ void list_dirs_files(const char *name, int level, int *num_per_level, void (*cb)
     }
 
     do {
+        len = snprintf(path, sizeof(path)-1, "%s/%s", name, entry->d_name);
+        if (len >= 1024) {
+            printf("FATAL: %s %d\n", name, len);
+        }
+        path[len] = 0;
+        json_str = json_string(path);
+        json_array_append(all_files, json_str);
+
         if (entry->d_type == DT_DIR) {
-            char path[1024];
-            int len = snprintf(path, sizeof(path)-1, "%s/%s", name, entry->d_name);
-            if (len >= 1024) {
-                printf("FATAL: %s %d\n", name, len);
-            }
-            path[len] = 0;
             // todo group these
             if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)
                 continue;
@@ -111,7 +133,7 @@ void list_dirs_files(const char *name, int level, int *num_per_level, void (*cb)
                 continue;
             }
             num_dirs++;
-            // num_per_level[level]++;
+            num_per_level[level]++;
             // if (level< 2) printf("nd: %d, nf: %d\n", num_dirs, num_files);
             // if (level < 4) printf("      %*s[%s] %s (%d)\n", level*2, "", entry->d_name, path, level);
 
@@ -119,18 +141,19 @@ void list_dirs_files(const char *name, int level, int *num_per_level, void (*cb)
             //     c
             // }
 
-            list_dirs_files(path, level + 1, num_per_level, cb, num_at_1, "", max_level);
+            list_dirs_files(path, level + 1, num_per_level, cb, num_at_2, "", max_level);
         }
         else {
             ext = get_filename_ext( entry->d_name );
             // if( search_array( accepted_exts, ext, 3 ) ) {
             num_files++;
+            // get_file_size(path);
             // if (!(num_files % 10000)) printf("nf: %d\n", num_files);
             // printf("%5d %*s- %s\n", num_files, level*2, "", entry->d_name);
             // }
         }
     } while ((entry = readdir(dir)));
-    // cb(level, num_at_1, num_per_level[1]);
+    cb(level, num_at_2, num_per_level[2]);
     // if (level < 3) free(dir_name);
     closedir(dir);
 }
@@ -140,19 +163,19 @@ void fun(int a, int b, int c) {
 //    printf("Fun %d %d\n\n", a, b);
 }
 
-void fun2(int a, int b, int c) {
-//    printf("CB %d %d\n\n", a, b);
+void fun2(int level, int b, int c) {
+   printf("CB %d %d %d\n", level, b, c);
     // float pc = (float) ((c * 100.0f) / b);
     int pc = c * 1000 / b;
 
-    if (a == 2) {
+    if (level == 2) {
         printf("%.1f\n", pc / 10.0);
         send_request(pc);
     }
 }
 
 void reset_npl(int *num_per_levels) {
-    memset(num_per_levels, 0, 4 * sizeof(int));
+    memset(num_per_levels, 0, 512 * sizeof(int));
 }
 
 // https://stackoverflow.com/questions/22367580/libcurl-how-to-stop-output-to-command-line-in-c
@@ -212,8 +235,10 @@ int main(int argc, char **argv)
     time_t end;
     double seconds;
     int MAX = 3;
-    int num_per_level[4];
+    int num_per_level1[512];
+    int num_per_level2[512];
     int num_at_1;
+    int num_at_2;
 
 
     if(argc < 2) {
@@ -225,26 +250,28 @@ int main(int argc, char **argv)
     start = time(NULL);
 
     // get numbers of dirs at level 1
-    reset_npl(num_per_level);
-    list_dirs(argv[1], 0, num_per_level, &fun, 0, 2);
-    num_at_1 = num_per_level[1];
+    reset_npl(num_per_level1);
+    list_dirs(argv[1], 0, num_per_level1, &fun, 0, 2);
+    num_at_1 = num_per_level1[1];
     end = time(NULL);
 
     // recurse one level deeper
-    reset_npl(num_per_level);
-    list_dirs(argv[1], 0, num_per_level, &fun2, num_at_1, 3);
+    reset_npl(num_per_level1);
+    list_dirs(argv[1], 0, num_per_level1, &fun2, num_at_1, 3);
+    num_at_2 = num_per_level1[2];
 
     // no limit, scan dirs & files
     num_files = 0;
     num_dirs = 0;
+    all_files = json_array();
 
-    reset_npl(num_per_level);
-    list_dirs_files(argv[1], 0, num_per_level, &fun2, num_at_1, "", -1);
+    reset_npl(num_per_level2);
+    list_dirs_files(argv[1], 0, num_per_level2, &fun2, num_at_2, "", -1);
     end = time(NULL);
 
     seconds = difftime(end, start);
     printf("%d dirs scanned\n", num_dirs);
-    for (int i = 0; i < MAX; i++) printf("\t%2d: %d\n", i, num_per_level[i]);
+    for (int i = 0; i < MAX; i++) printf("\t%2d: %d\n", i, num_per_level1[i]);
     printf("%d files found\n", num_files);
     printf("%f seconds elapsed\n", seconds);
 

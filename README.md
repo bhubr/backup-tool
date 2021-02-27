@@ -52,3 +52,43 @@ benoit@DESKTOP-TMB3JDP:~/Code/backup-tool/recurse$ ./ldir /mnt/c/Users/Ben/Wild/
 ```
 
 It's so damn slow.
+
+### Scan with/without file size
+
+Without file size, on D:\Media\Musique:
+
+```
+414 dirs scanned
+2711 files found
+1.000000 seconds elapsed
+```
+
+With file size, on D:\Media\Musique:
+
+```
+414 dirs scanned
+2711 files found
+99.000000 seconds elapsed
+```
+
+*Way* too slow...
+
+### With/without storing as json array of strings
+
+On D:\Media
+
+Without:
+
+```
+19335 dirs scanned
+80034 files found
+37.000000 seconds elapsed
+```
+
+With:
+
+```
+19335 dirs scanned
+80034 files found
+39.000000 seconds elapsed
+```
