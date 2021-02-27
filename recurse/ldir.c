@@ -90,7 +90,7 @@ void fun(int a, int b, int c) {
 void fun2(int a, int b, int c) {
 //    printf("CB %d %d\n\n", a, b);
     // float pc = (float) ((c * 100.0f) / b);
-    int pc = c * 100 / b;
+    int pc = c * 1000 / b;
 
     if (a == 2) {
         printf("CB %d %d %d %d\n\n", a, b, c, pc);
@@ -117,16 +117,9 @@ void send_request(int a, int percent) {
 		return 1;
 	}
 
-	printf("#1\n");
-    printf("PC %d %d\n\n", a,  percent);
-
     payload = malloc(100);
 
-    sprintf(payload, "{\"percent\": %d}\n\n\n", percent);
-
-    // printf("PAYLOAD: %s\n", payload);
-
-	// "Content-Length: " (16 bytes) + payload len + null char
+    sprintf(payload, "{\"percent\": %.1f}\n\n\n", percent / 10.0);
 	sprintf(content_length_val, "%ld", strlen(payload));
 	content_length = malloc(17 + strlen(content_length_val));
 	strcpy(content_length, "Content-Length: ");

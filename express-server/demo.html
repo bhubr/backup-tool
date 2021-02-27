@@ -32,15 +32,26 @@
       <scan id="progress-value" class="progress-bar-inner" style="width: 0%;"></scan>
     </div>
 
-    <div id="pc"></div>
+    <div id="stats">
+      <span id="pc"></span>
+      <span id="time"></span>
+    </div>
   </div>
   <script src="/socket.io/socket.io.js"></script>
   <script>
     var socket = io();
+    let ts1;
+    let ts2;
     socket.on('percent', function(msg) {
       const { percent } = JSON.parse(msg);
+      console.log(msg);
+      if (!ts1) ts1 = Date.now();
+      if (percent === 100 && !ts2) ts2 = Date.now();
       document.querySelector('#pc').innerText = `${percent}%`;
       document.querySelector('#progress-value').style.width = `${percent}%`;
+      if (ts1 && ts2) {
+        document.querySelector('#time').innerText = `(${((ts2 - ts1) / 1000).toFixed(1)} seconds)`;
+      }
     });
   </script>
 </body>
