@@ -16,7 +16,7 @@ io.on('connection', (socket) => {
 app.use(express.static('assets'));
 
 const jsonParser = express.json({limit: '100mb'});
-const rawParser = express.raw({limit: '100mb',type:'application/json'});
+const rawParser = express.raw({limit: '1000mb',type:'application/json'});
 
 app.get('/', (req, res) => {
   res.sendFile(demoHtml);
@@ -32,9 +32,6 @@ app.post('/scan-pc', jsonParser, (req, res) => {
 
 app.post('/files', rawParser, (req, res) => {
   const files = req.body.toString();
-  console.log(files);
-  // const { percent } = req.body;
-  // const msg = JSON.stringify({ percent });
   io.emit('files', req.body.toString());
   res.sendStatus(200);
 });

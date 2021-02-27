@@ -135,7 +135,7 @@ void list_dirs_files(const char *name, int level, int *num_per_level, void (*cb)
             num_dirs++;
             num_per_level[level]++;
             // if (level< 2) printf("nd: %d, nf: %d\n", num_dirs, num_files);
-            // if (level < 4) printf("      %*s[%s] %s (%d)\n", level*2, "", entry->d_name, path, level);
+            // if (level <= 4) printf("      %*s[%s] %s (%d)\n", level*2, "", entry->d_name, path, level);
 
             // if (level < 2) {
             //     c
@@ -164,7 +164,7 @@ void fun(int a, int b, int c) {
 }
 
 void fun2(int level, int b, int c) {
-   printf("CB %d %d %d\n", level, b, c);
+//    printf("CB %d %d %d\n", level, b, c);
     // float pc = (float) ((c * 100.0f) / b);
     int pc = c * 1000 / b;
 
