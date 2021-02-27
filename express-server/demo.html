@@ -25,6 +25,7 @@
       height: 1em;
     }
   </style>
+  <link rel="icon" href="/favicon.ico?v=2" />
 </head>
 <body>
   <div class="container">
@@ -36,6 +37,9 @@
       <span id="pc"></span>
       <span id="time"></span>
     </div>
+
+    <ul id="files">
+    </ul>
   </div>
   <script src="/socket.io/socket.io.js"></script>
   <script>
@@ -50,6 +54,14 @@
       document.querySelector('#pc').innerText = `${percent}%`;
       document.querySelector('#progress-value').style.width = `${percent}%`;
       document.querySelector('#time').innerText = `(${((ts2 - ts1) / 1000).toFixed(1)} seconds)`;
+    });
+    socket.on('files', function(msg) {
+      const files = JSON.parse(msg);
+      files.forEach(f => {
+        const li = document.createElement('LI');
+        li.innerText = f;
+        document.querySelector('#files').appendChild(li);
+      })
     });
   </script>
 </body>

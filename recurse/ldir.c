@@ -170,7 +170,7 @@ void fun2(int level, int b, int c) {
 
     if (level == 2) {
         printf("%.1f\n", pc / 10.0);
-        send_request(pc);
+        send_percent_request(pc);
     }
 }
 
@@ -178,15 +178,36 @@ void reset_npl(int *num_per_levels) {
     memset(num_per_levels, 0, 512 * sizeof(int));
 }
 
+void send_percent_request(int percent) {
+
+    printf("send_percent\n");
+    char *payload;
+    payload = malloc(100);
+
+    sprintf(payload, "{\"percent\": %.1f}\n\n\n", percent / 10.0);
+
+    send_request("/scan-pc", payload);
+    free(payload);
+}
+
 // https://stackoverflow.com/questions/22367580/libcurl-how-to-stop-output-to-command-line-in-c
-void send_request(int percent) {
+void send_request(char * endpoint, char * payload) {
     CURL *curl;
     CURLcode res;
     struct curl_slist *headers = NULL;
 	char *content_length;
-    char *payload;
 	char content_length_val[8];
+    const char *base_url = "http://localhost:5000";
+    char *url;
+    int base_url_len = strlen(base_url);
+    int url_len = base_url_len + strlen(endpoint);
     FILE *devnull = fopen("/dev/null", "w+");
+
+    printf("send_request %s %d %d\n", base_url, base_url_len, url_len);
+    url = malloc(url_len + 1);
+    strcpy(url, base_url);
+    strcat(url + base_url_len, endpoint);
+    printf("URL        >>\t%s\n", url);
 
 	curl = curl_easy_init();
 	if (!curl)
@@ -195,9 +216,6 @@ void send_request(int percent) {
 		return 1;
 	}
 
-    payload = malloc(100);
-
-    sprintf(payload, "{\"percent\": %.1f}\n\n\n", percent / 10.0);
 	sprintf(content_length_val, "%ld", strlen(payload));
 	content_length = malloc(17 + strlen(content_length_val));
 	strcpy(content_length, "Content-Length: ");
@@ -208,7 +226,7 @@ void send_request(int percent) {
 
 	headers = prepare_headers(content_length);
 
-	curl_easy_setopt(curl, CURLOPT_URL, "http://localhost:5000/scan-pc");
+	curl_easy_setopt(curl, CURLOPT_URL, url);
 	curl_easy_setopt(curl, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_1);
 	curl_easy_setopt(curl, CURLOPT_POSTFIELDS, payload);
 	curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
@@ -226,7 +244,6 @@ void send_request(int percent) {
 	curl_global_cleanup();
 
 	free(content_length);
-	free(payload);
 }
 
 int main(int argc, char **argv)
@@ -239,7 +256,7 @@ int main(int argc, char **argv)
     int num_per_level2[512];
     int num_at_1;
     int num_at_2;
-
+    char *json_files;
 
     if(argc < 2) {
         printf("Not enough arguments:\n  ldir <dir>\n\n");
@@ -270,11 +287,17 @@ int main(int argc, char **argv)
     end = time(NULL);
 
     seconds = difftime(end, start);
+
     printf("%d dirs scanned\n", num_dirs);
     for (int i = 0; i < MAX; i++) printf("\t%2d: %d\n", i, num_per_level1[i]);
     printf("%d files found\n", num_files);
     printf("%f seconds elapsed\n", seconds);
 
+    printf("building and sending files\n");
+    json_files = json_dumps(all_files, 0);
+    printf("json payload size: %d\n", strlen(json_files));
+    send_request("/files", json_files);
+    free(json_files);
 
     return 0;
 }
