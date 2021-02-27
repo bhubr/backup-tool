@@ -99,12 +99,24 @@ With:
 
 C client
 
-* [x] send array of files as JSON. 6:07pm
+* c01 [x] send array of files as JSON. 6:07pm
 * [ ] sort files by types
 * [ ] handle duplicates by name (size is too slow)
-* [ ] reset time counter for each run
 * [ ] handle multiple hosts & drives & per-drive settings
+* [ ] more fine-grained progress bar
 
 Node server
 
-* [x] handle array of files
+* s01 [x] handle array of files
+
+Web UI
+
+* [ ] reset time counter for each run
+
+All
+
+* [ ] make a tree of the file list
+
+### Time
+
+* c01 + s01 = 1:05
