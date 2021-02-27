@@ -46,12 +46,10 @@
       const { percent } = JSON.parse(msg);
       console.log(msg);
       if (!ts1) ts1 = Date.now();
-      if (percent === 100 && !ts2) ts2 = Date.now();
+      ts2 = Date.now();
       document.querySelector('#pc').innerText = `${percent}%`;
       document.querySelector('#progress-value').style.width = `${percent}%`;
-      if (ts1 && ts2) {
-        document.querySelector('#time').innerText = `(${((ts2 - ts1) / 1000).toFixed(1)} seconds)`;
-      }
+      document.querySelector('#time').innerText = `(${((ts2 - ts1) / 1000).toFixed(1)} seconds)`;
     });
   </script>
 </body>

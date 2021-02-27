@@ -15,6 +15,7 @@ int num_opened = 0;
 int num_files = 0;
 int num_dirs = 0;
 const char *accepted_exts[] = {"mp3","m4a","flac"};
+const char *ignored[] = {"node_modules", ".pnpm", "AppData"};
 
 struct curl_slist *prepare_headers(char *content_length)
 {
@@ -47,7 +48,6 @@ void list_dirs(const char *name, int level, int *num_per_level, void (*cb)(int, 
 {
     DIR *dir;
     struct dirent *entry;
-    // char *ext;
 
     if ((max_level > -1) && (level == max_level)) return;
 
@@ -67,21 +67,74 @@ void list_dirs(const char *name, int level, int *num_per_level, void (*cb)(int, 
                 continue;
             num_dirs++;
             num_per_level[level]++;
-            // if (level == 1) printf("      %*s[%s]\n", level*2, "", entry->d_name);
-
             list_dirs(path, level + 1, num_per_level, cb, num_at_1, max_level);
+        }
+    } while ((entry = readdir(dir)));
+    cb(level, num_at_1, num_per_level[1]);
+    closedir(dir);
+}
+
+// added count of dirs per level
+// now handle callback
+void list_dirs_files(const char *name, int level, int *num_per_level, void (*cb)(int, int, int), int num_at_1, char *parent_name, int max_level)
+{
+    DIR *dir;
+    struct dirent *entry;
+    char *ext;
+    // char *dir_name;
+
+    // if (level < 3) dir_name = malloc(512);
+
+    if ((max_level > -1) && (level == max_level)) return;
+
+    if (!(dir = opendir(name)))
+        return;
+    if (!(entry = readdir(dir))){
+        closedir(dir);
+        return;
+    }
+
+    do {
+        if (entry->d_type == DT_DIR) {
+            char path[1024];
+            int len = snprintf(path, sizeof(path)-1, "%s/%s", name, entry->d_name);
+            if (len >= 1024) {
+                printf("FATAL: %s %d\n", name, len);
+            }
+            path[len] = 0;
+            // todo group these
+            if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)
+                continue;
+
+            if (search_array(ignored, entry->d_name, 3)) {
+                printf("Ignoring %s\n", path);
+                continue;
+            }
+            num_dirs++;
+            num_per_level[level]++;
+            // if (level< 2) printf("nd: %d, nf: %d\n", num_dirs, num_files);
+            // if (level < 4) printf("      %*s[%s] %s (%d)\n", level*2, "", entry->d_name, path, level);
+
+            // if (level < 2) {
+            //     c
+            // }
+
+            list_dirs_files(path, level + 1, num_per_level, cb, num_at_1, "", max_level);
         }
         // else {
         //     ext = get_filename_ext( entry->d_name );
         //     // if( search_array( accepted_exts, ext, 3 ) ) {
         //     num_files++;
+        //     // if (!(num_files % 10000)) printf("nf: %d\n", num_files);
         //     // printf("%5d %*s- %s\n", num_files, level*2, "", entry->d_name);
         //     // }
         // }
     } while ((entry = readdir(dir)));
-    cb(level, num_at_1, num_per_level[1]);
+    // cb(level, num_at_1, num_per_level[1]);
+    // if (level < 3) free(dir_name);
     closedir(dir);
 }
+
 
 void fun(int a, int b, int c) {
 //    printf("Fun %d %d\n\n", a, b);
@@ -93,8 +146,8 @@ void fun2(int a, int b, int c) {
     int pc = c * 1000 / b;
 
     if (a == 2) {
-        printf("CB %d %d %d %d\n\n", a, b, c, pc);
-        send_request(11, pc);
+        printf("%.1f\n", pc / 10.0);
+        send_request(pc);
     }
 }
 
@@ -102,13 +155,15 @@ void reset_npl(int *num_per_levels) {
     memset(num_per_levels, 0, 4 * sizeof(int));
 }
 
-void send_request(int a, int percent) {
+// https://stackoverflow.com/questions/22367580/libcurl-how-to-stop-output-to-command-line-in-c
+void send_request(int percent) {
     CURL *curl;
     CURLcode res;
     struct curl_slist *headers = NULL;
 	char *content_length;
     char *payload;
 	char content_length_val[8];
+    FILE *devnull = fopen("/dev/null", "w+");
 
 	curl = curl_easy_init();
 	if (!curl)
@@ -125,8 +180,8 @@ void send_request(int a, int percent) {
 	strcpy(content_length, "Content-Length: ");
 	strcat(content_length, content_length_val);
 
-	printf("Content-Length >>\t%s\n", content_length);
-	printf("Payload        >>\t%s\n", payload);
+	// printf("Content-Length >>\t%s\n", content_length);
+	// printf("Payload        >>\t%s\n", payload);
 
 	headers = prepare_headers(content_length);
 
@@ -134,7 +189,11 @@ void send_request(int a, int percent) {
 	curl_easy_setopt(curl, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_1);
 	curl_easy_setopt(curl, CURLOPT_POSTFIELDS, payload);
 	curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
-	// curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
+	curl_easy_setopt(curl, CURLOPT_VERBOSE, 0L);
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, devnull);
+    // curl_easy_setopt(curl, CURLOPT_MUTE, 1);
+    // curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, NULL);
+    // curl_easy_setopt(curl, CURLOPT_NOBODY, 1);
 	res = curl_easy_perform(curl);
 	if (res != CURLE_OK)
 		fprintf(stderr, "curl_easy_perform() failed: %s\n",
@@ -174,9 +233,13 @@ int main(int argc, char **argv)
     // recurse one level deeper
     reset_npl(num_per_level);
     list_dirs(argv[1], 0, num_per_level, &fun2, num_at_1, 3);
-    // num_at_1 = num_per_level[1];
 
+    // no limit, scan dirs & files
+    num_files = 0;
+    num_dirs = 0;
 
+    reset_npl(num_per_level);
+    list_dirs_files(argv[1], 0, num_per_level, &fun2, num_at_1, "", -1);
     end = time(NULL);
 
     seconds = difftime(end, start);
