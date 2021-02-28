@@ -1,5 +1,5 @@
 import io from 'socket.io-client'
-import './stm.js'
+import { renderToDOMNode } from './stm.js'
 const socket = io('http://localhost:5000')
 const scans = []
 // let ts1
@@ -23,7 +23,8 @@ socket.on('scan:start', msg => {
       estimate: null,
       scan: null
     },
-    filesStart: null
+    filesStart: null,
+    stmFolders: []
   })
   const li = document.createElement('LI')
   li.innerText = scanId
@@ -33,6 +34,7 @@ socket.on('scan:start', msg => {
   document.querySelector('#pc').innerText = '% completed'
   document.querySelector('#progress-value').style.width = '0'
   document.querySelector('#time').innerText = '(time in seconds)'
+  document.querySelector('#files').innerHTML = ''
 })
 
 socket.on('scan:stats', msg => {
@@ -47,6 +49,17 @@ socket.on('scan:stats', msg => {
     document.querySelector('#current-dirs').innerText = dirs.toString() + ` (${(dirs / elapsed).toFixed(1)}/sec)`
     document.querySelector('#current-files').innerText = files.toString() + ` (${(files / elapsed).toFixed(1)}/sec)`
   }
+})
+
+socket.on('scan:dir-stats', msg => {
+  console.log(msg)
+  const { id: driveId, count } = JSON.parse(msg)
+  const scan = scans
+    .find(s => s.driveId === driveId && !s.done)
+  if (!scan) console.error('no scan!')
+  scan.stmFolders.push(count)
+  console.log('>>>>> RENDER TREEMAP', scan.stmFolders)
+  renderToDOMNode(document.querySelector('#treemap'), [...scan.stmFolders]);
 })
 
 socket.on('percent', msg => {
@@ -65,10 +78,10 @@ socket.on('percent', msg => {
 
 socket.on('files', msg => {
   document.querySelector('#files').innerHTML = ''
-  const files = JSON.parse(msg)
-  files.forEach(f => {
-    const li = document.createElement('LI')
-    li.innerText = f
-    document.querySelector('#files').appendChild(li)
-  })
+  // const files = JSON.parse(msg)
+  // files.forEach(f => {
+  //   const li = document.createElement('LI')
+  //   li.innerText = f
+  //   document.querySelector('#files').appendChild(li)
+  // })
 })

@@ -45,6 +45,11 @@ app.post('/scan-files-stats', rawParser, (req, res) => {
   res.sendStatus(200)
 })
 
+app.post('/dir-stats', rawParser, (req, res) => {
+  io.emit('scan:dir-stats', req.body.toString())
+  res.sendStatus(200)
+})
+
 app.post('/files', rawParser, (req, res) => {
   const files = req.body.toString()
   io.emit('files', files)

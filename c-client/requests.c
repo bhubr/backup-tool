@@ -69,7 +69,7 @@ void send_percent_request(int percent, char *phase, char *drive_id) {
     char *payload;
     payload = malloc(100);
 
-    sprintf(payload, "{\"id\": \"%s\", \"phase\": \"%s\", \"percent\": %.1f}\n\n\n", drive_id, phase, percent / 10.0);
+    sprintf(payload, "{\"id\": \"%s\", \"phase\": \"%s\", \"percent\": %.1f}", drive_id, phase, percent / 10.0);
 
     send_request("/scan-pc", payload);
     free(payload);
@@ -102,8 +102,40 @@ void send_files_stats_request(int dirs, int files, char *drive_id) {
     char *payload;
     payload = malloc(100);
 
-    sprintf(payload, "{\"id\": \"%s\", \"dirs\": %d, \"files\": %d}\n\n\n", drive_id, dirs, files);
+    sprintf(payload, "{\"id\": \"%s\", \"dirs\": %d, \"files\": %d}", drive_id, dirs, files);
 
     send_request("/scan-files-stats", payload);
     free(payload);
+}
+
+void send_dir_stats(char *id, char *path, int level, int num_under) {
+    json_t *data = json_object();
+    json_t *val;
+    char *payload;
+printf("#1\n");
+    val = json_string(id);
+    json_object_set(data, "id", val);
+    json_decref(val);
+
+printf("#2 %s\n", path);
+    val = json_string(path);
+    json_object_set(data, "path", val);
+    json_decref(val);
+
+printf("#3\n");
+    val = json_integer(level);
+    json_object_set(data, "level", val);
+    json_decref(val);
+
+printf("#4\n");
+    val = json_integer(num_under);
+    json_object_set(data, "count", val);
+    json_decref(val);
+
+printf("#5\n");
+    payload = json_dumps(data, 0);
+    send_request("/dir-stats", payload);
+
+printf("#6\n");    free(payload);
+    json_decref(data);
 }

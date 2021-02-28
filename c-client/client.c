@@ -88,7 +88,7 @@ int get_file_size(char *path) {
 
 // added count of dirs per level
 // now handle callback
-void list_dirs_files(const char *name, int level, int *num_per_level, void (*cb)(int, int, int, char *), int num_at_2, char *parent_name, int max_level)
+int list_dirs_files(const char *name, int level, int *num_per_level, void (*cb)(int, int, int, char *), int num_at_2, char *parent_name, int max_level)
 {
     DIR *dir;
     struct dirent *entry;
@@ -96,6 +96,7 @@ void list_dirs_files(const char *name, int level, int *num_per_level, void (*cb)
     char path[1024];
     int len;
     json_t *json_str;
+    int num_under = 0;
     // char *dir_name;
 
     // if (level < 3) dir_name = malloc(512);
@@ -132,16 +133,13 @@ void list_dirs_files(const char *name, int level, int *num_per_level, void (*cb)
             // if (level< 2) printf("nd: %d, nf: %d\n", num_dirs, num_files);
             // if (level <= 4) printf("      %*s[%s] %s (%d)\n", level*2, "", entry->d_name, path, level);
 
-            // if (level < 2) {
-            //     c
-            // }
-
-            list_dirs_files(path, level + 1, num_per_level, cb, num_at_2, "", max_level);
+            num_under += 1 + list_dirs_files(path, level + 1, num_per_level, cb, num_at_2, "", max_level);
         }
         else {
             // ext = get_filename_ext( entry->d_name );
             // if( search_array( accepted_exts, ext, 3 ) ) {
             num_files++;
+            num_under++;
             // get_file_size(path);
             // if (!(num_files % 10000)) printf("nf: %d\n", num_files);
             // printf("%5d %*s- %s\n", num_files, level*2, "", entry->d_name);
@@ -154,7 +152,11 @@ void list_dirs_files(const char *name, int level, int *num_per_level, void (*cb)
     } while ((entry = readdir(dir)));
     cb(level, num_at_2, num_per_level[2], "scan");
     // if (level < 3) free(dir_name);
+    if (level == 2) {
+        send_dir_stats(choosen_drive_id, name, level, num_under);
+    }
     closedir(dir);
+    return num_under;
 }
 
 void fun(int a, int b, int c, char *phase) {
