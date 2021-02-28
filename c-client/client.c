@@ -241,6 +241,7 @@ int main(int argc, char **argv)
     all_files = json_array();
 
     reset_npl(num_per_level2);
+    send_files_stats_request(0, 0, choosen_drive_id);
     list_dirs_files(path, 0, num_per_level2, &fun2, num_at_2, "", -1);
     end = time(NULL);
 

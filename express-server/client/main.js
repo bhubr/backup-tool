@@ -21,7 +21,8 @@ socket.on('scan:start', msg => {
     progress: {
       estimate: null,
       scan: null
-    }
+    },
+    filesStart: null
   })
   const li = document.createElement('LI')
   li.innerText = scanId
@@ -35,9 +36,16 @@ socket.on('scan:start', msg => {
 
 socket.on('scan:stats', msg => {
   console.log(msg)
-  const { files, dirs } = JSON.parse(msg)
-  document.querySelector('#current-dirs').innerText = dirs.toString()
-  document.querySelector('#current-files').innerText = files.toString()
+  const { id: driveId, files, dirs } = JSON.parse(msg)
+  const scan = scans
+    .find(s => s.driveId === driveId && !s.done)
+  if (!scan) console.error('no scan!')
+  if (!scan.filesStart) scan.filesStart = Date.now()
+  else {
+    const elapsed = (Date.now() - scan.filesStart) / 1000
+    document.querySelector('#current-dirs').innerText = dirs.toString() + ` (${(dirs / elapsed).toFixed(1)}/sec)`
+    document.querySelector('#current-files').innerText = files.toString() + ` (${(files / elapsed).toFixed(1)}/sec)`
+  }
 })
 
 socket.on('percent', msg => {
