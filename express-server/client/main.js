@@ -4,7 +4,7 @@ const scans = []
 // let ts1
 // let ts2
 
-socket.on('scan:start', function (msg) {
+socket.on('scan:start', msg => {
   const { id: driveId, label, timestamp } = JSON.parse(msg)
   scans
     .filter(s => s.driveId === driveId && !s.done)
@@ -33,7 +33,14 @@ socket.on('scan:start', function (msg) {
   document.querySelector('#time').innerText = '(time in seconds)'
 })
 
-socket.on('percent', function (msg) {
+socket.on('scan:stats', msg => {
+  console.log(msg)
+  const { files, dirs } = JSON.parse(msg)
+  document.querySelector('#current-dirs').innerText = dirs.toString()
+  document.querySelector('#current-files').innerText = files.toString()
+})
+
+socket.on('percent', msg => {
   const { id: driveId, percent, phase } = JSON.parse(msg)
   const scan = scans
     .find(s => s.driveId === driveId && !s.done)
@@ -47,7 +54,7 @@ socket.on('percent', function (msg) {
   document.querySelector('#time').innerText = `(${((now - scan.progress[phase].start) / 1000).toFixed(1)} seconds)`
 })
 
-socket.on('files', function (msg) {
+socket.on('files', msg => {
   document.querySelector('#files').innerHTML = ''
   const files = JSON.parse(msg)
   files.forEach(f => {

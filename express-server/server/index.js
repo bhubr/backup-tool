@@ -40,6 +40,11 @@ app.post('/scan-pc', rawParser, (req, res) => {
   res.sendStatus(200)
 })
 
+app.post('/scan-files-stats', rawParser, (req, res) => {
+  io.emit('scan:stats', req.body.toString())
+  res.sendStatus(200)
+})
+
 app.post('/files', rawParser, (req, res) => {
   const files = req.body.toString()
   io.emit('files', files)
