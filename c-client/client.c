@@ -257,7 +257,7 @@ int main(int argc, char **argv)
     printf("building and sending files\n");
     json_files = json_dumps(all_files, 0);
     printf("json payload size: %ld\n", strlen(json_files));
-    send_request("/files", json_files);
+    send_request("/done", json_files);
     free(json_files);
 
     return 0;

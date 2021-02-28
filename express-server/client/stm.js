@@ -11,13 +11,11 @@ export class Rectangle {
     this.h = h
     this.direction = direction || (this.h < this.w ? 'row' : 'column')
     this.children = []
-    console.log('>> Rectangle ctor', w, h, direction, this.direction)
   }
 
   layoutrow (row) {
     const rowArea = row.reduce((c, r) => c + r, 0)
     const otherSide = rowArea / this.width()
-    console.log('>>> layout', row, rowArea, otherSide)
     let w
     let h
     let children
@@ -25,26 +23,19 @@ export class Rectangle {
     let secondRect
     if (this.direction === 'row') {
       w = otherSide
-      // h = this.w
-      children = row.map(area => console.log('subrect', area, area / rowArea, w, this.h * (area / rowArea)) || new Rectangle(w, this.h * (area / rowArea)))
+      children = row.map(area => new Rectangle(w, this.h * (area / rowArea)))
       firstRect = new Rectangle(otherSide, this.h, 'column')
       secondRect = new Rectangle(this.w - otherSide, this.h)
     } else {
-      // throw new Error('dunno')
       h = otherSide
-      // w = this.h
       children = row.map(area => new Rectangle(this.w * (area / rowArea), h))
       firstRect = new Rectangle(this.w, otherSide, 'row')
       secondRect = new Rectangle(this.w, this.h - otherSide)
-      // firstRect = new Rectangle(otherSide, this.h, 'row')
     }
     Rectangle.pushToStack(secondRect)
-    console.log('1st/2nd', firstRect, secondRect)
     firstRect.children = children
     this.children.push(firstRect)
     this.children.push(secondRect)
-
-    // console.log('<<< layout', otherSide, w, h)
   }
 
   width () {
@@ -62,9 +53,9 @@ function worst (R, w) {
 }
 
 function squarify (children, row, w) {
-  console.log('>> squarify', children, row, w)
+  // console.log('>> squarify', children, row, w)
   if (!children.length && !row.length) {
-    console.log('DONE')
+    console.log('>> squarify DONE')
     Rectangle.clearStack()
     return
   }

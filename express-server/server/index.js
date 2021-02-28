@@ -50,9 +50,9 @@ app.post('/dir-stats', rawParser, (req, res) => {
   res.sendStatus(200)
 })
 
-app.post('/files', rawParser, (req, res) => {
+app.post('/done', rawParser, (req, res) => {
   const files = req.body.toString()
-  io.emit('files', files)
+  io.emit('scan:done', files)
   res.sendStatus(200)
 })
 
