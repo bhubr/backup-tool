@@ -1,4 +1,5 @@
 import io from 'socket.io-client'
+import './stm.js'
 const socket = io('http://localhost:5000')
 const scans = []
 // let ts1
