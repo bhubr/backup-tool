@@ -255,6 +255,7 @@ int main(int argc, char **argv)
     printf("%f seconds elapsed\n", seconds);
 
     printf("building and sending files\n");
+    json_decref(all_files);
     json_files = json_dumps(all_files, 0);
     printf("json payload size: %ld\n", strlen(json_files));
     send_request("/done", json_files);

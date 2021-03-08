@@ -38,7 +38,6 @@ socket.on('scan:start', msg => {
 })
 
 socket.on('scan:stats', msg => {
-  console.log(msg)
   const { id: driveId, files, dirs } = JSON.parse(msg)
   const scan = scans
     .find(s => s.driveId === driveId && !s.done)
@@ -51,20 +50,25 @@ socket.on('scan:stats', msg => {
   }
 })
 
-const copyAndSortTreeMapItems = (arr) => {
+const copyAndSortTreeMapItems = (arr, getArea = c => c) => {
   const copy = [...arr]
-  return copy.sort((a, b) => b - a)
+  return copy.sort((a, b) => getArea(b) - getArea(a))
 }
 
 socket.on('scan:dir-stats', msg => {
-  console.log(msg)
-  const { id: driveId, count } = JSON.parse(msg)
+  const { id: driveId, path, count } = JSON.parse(msg)
   const scan = scans
     .find(s => s.driveId === driveId && !s.done)
   if (!scan) console.error('no scan!')
-  scan.stmFolders.push(count)
-  console.log('>>>>> RENDER TREEMAP', scan.stmFolders)
-  if (scan.stmFolders.length % 10 === 0) renderToDOMNode(document.querySelector('#treemap'), copyAndSortTreeMapItems(scan.stmFolders));
+  scan.stmFolders.push({ path, count })
+  // console.log('>>>>> RENDER TREEMAP', scan.stmFolders)
+
+  if (scan.stmFolders.length % 10 === 0) renderToDOMNode(
+  // if (scan.stmFolders.length === 20) renderToDOMNode(
+    document.querySelector('#treemap'),
+    copyAndSortTreeMapItems(scan.stmFolders, it => it.count),
+    { getArea: it => it.count }
+  );
 })
 
 socket.on('percent', msg => {
@@ -87,7 +91,7 @@ socket.on('scan:done', msg => {
     .find(s => s.driveId === driveId && !s.done)
   if (!scan) console.error('no scan!')
 
-  renderToDOMNode(document.querySelector('#treemap'), copyAndSortTreeMapItems(scan.stmFolders));
+  renderToDOMNode(document.querySelector('#treemap'), copyAndSortTreeMapItems(scan.stmFolders, it => it.count), { getArea: it => it.count });
   console.log('DONE', scan.id)
   // const files = JSON.parse(msg)
   // files.forEach(f => {
